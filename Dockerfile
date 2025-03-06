@@ -56,7 +56,8 @@ ENV PRISMA_QUERY_ENGINE_BINARY=/prisma-engines/query-engine \
   NEXT_TELEMETRY_DISABLED=1
 
 # Copy only the necessary files from the previous stage
-COPY --from=builder /zipline/.git ./.git
+COPY --from=builder /zipline/.git/refs ./.git/refs
+COPY --from=builder /zipline/.git/HEAD ./.git/HEAD
 COPY --from=builder /zipline/dist ./dist
 COPY --from=builder /zipline/.next ./.next
 
