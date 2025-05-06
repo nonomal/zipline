@@ -3,9 +3,7 @@ FROM node:22-alpine3.21 AS base
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
 
-RUN npm install -g corepack
-RUN corepack enable pnpm
-RUN corepack prepare pnpm@latest --activate
+RUN corepack enable
 
 RUN apk add --no-cache ffmpeg tzdata
 
@@ -42,6 +40,7 @@ COPY --from=builder /zipline/.next ./.next
 
 COPY --from=builder /zipline/mimes.json ./mimes.json
 COPY --from=builder /zipline/code.json ./code.json
+COPY --from=builder /zipline/generated ./generated
 
 RUN pnpm build:prisma
 

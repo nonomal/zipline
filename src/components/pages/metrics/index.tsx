@@ -14,21 +14,21 @@ const StorageGraph = dynamic(() => import('./parts/StorageGraph'));
 const ViewsGraph = dynamic(() => import('./parts/ViewsGraph'));
 
 export default function DashboardMetrics() {
-  const [dateRange, setDateRange] = useState<[Date | null, Date | null]>([
-    new Date(Date.now() - 86400000 * 7),
-    new Date(),
-  ]); // default: [7 days ago, now]
+  const [dateRange, setDateRange] = useState<[string | null, string | null]>([
+    new Date(Date.now() - 86400000 * 7).toISOString(),
+    new Date().toISOString(),
+  ]);
 
   const [open, setOpen] = useState(false);
   const [allTime, setAllTime] = useState(false);
 
   const { data, isLoading } = useApiStats({
-    from: dateRange[0]?.toISOString() ?? undefined,
-    to: dateRange[1]?.toISOString() ?? undefined,
+    from: allTime || !dateRange[0] ? undefined : new Date(dateRange[0]).toISOString(),
+    to: allTime || !dateRange[1] ? undefined : new Date(dateRange[1]).toISOString(),
     all: allTime,
   });
 
-  const handleDateChange = (value: [Date | null, Date | null]) => {
+  const handleDateChange = (value: [string | null, string | null]) => {
     setAllTime(false);
     setDateRange(value);
   };
@@ -46,7 +46,7 @@ export default function DashboardMetrics() {
             value={dateRange}
             onChange={handleDateChange}
             allowSingleDateInRange={false}
-            maxDate={new Date(Date.now() + 0)}
+            maxDate={new Date()}
           />
         </Paper>
 
@@ -69,25 +69,14 @@ export default function DashboardMetrics() {
         </Button>
         {!allTime ? (
           <Text size='sm' c='dimmed'>
-            {data?.length ? (
-              <>
-                {new Date(data?.[0]?.createdAt).toLocaleDateString()}
-                {' to '}
-                {new Date(data?.[data.length - 1]?.createdAt).toLocaleDateString()}
-              </>
-            ) : (
-              <>
-                {dateRange[0]?.toLocaleDateString()}{' '}
-                {dateRange[1] ? `to ${dateRange[1]?.toLocaleDateString()}` : ''}
-              </>
-            )}
+            {dateRange[0] ? new Date(dateRange[0]).toLocaleDateString() : '—'}
+            {dateRange[1] ? ` to ${new Date(dateRange[1]).toLocaleDateString()}` : ''}
           </Text>
         ) : (
           <Text size='sm' c='dimmed'>
             All Time
           </Text>
         )}
-        {/* <Tooltip label='This may take longer than usual to load.'> */}
         <Tooltip
           label={!allTime ? 'This may take longer than usual to load.' : 'You are viewing all time stats.'}
         >
@@ -107,22 +96,18 @@ export default function DashboardMetrics() {
         {isLoading ? (
           <div>
             <StatsCardsSkeleton />
-
             <StatsTablesSkeleton />
           </div>
         ) : data?.length ? (
           <div>
-            <StatsCards data={data!} />
-
-            <StatsTables data={data!} />
-
+            <StatsCards data={data} />
+            <StatsTables data={data} />
             <SimpleGrid mt='md' cols={{ base: 1, md: 2 }}>
-              <FilesUrlsCountGraph metrics={data!} />
-              <ViewsGraph metrics={data!} />
+              <FilesUrlsCountGraph metrics={data} />
+              <ViewsGraph metrics={data} />
             </SimpleGrid>
-
             <div>
-              <StorageGraph metrics={data!} />
+              <StorageGraph metrics={data} />
             </div>
           </div>
         ) : (

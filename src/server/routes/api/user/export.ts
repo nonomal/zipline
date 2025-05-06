@@ -3,7 +3,7 @@ import { datasource } from '@/lib/datasource';
 import { prisma } from '@/lib/db';
 import { log } from '@/lib/logger';
 import { userMiddleware } from '@/server/middleware/user';
-import { Export } from '@prisma/client';
+import { Export } from '../../../../../generated/client';
 import fastifyPlugin from 'fastify-plugin';
 import { Zip, ZipPassThrough } from 'fflate';
 import { createWriteStream } from 'fs';

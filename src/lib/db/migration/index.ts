@@ -1,15 +1,27 @@
-import { Migrate } from '@prisma/migrate/dist/Migrate';
-import { ensureDatabaseExists } from '@prisma/migrate/dist/utils/ensureDatabaseExists';
+import { Migrate } from '@prisma/migrate';
 import { log } from '@/lib/logger';
+import { loadSchemaContext } from '@prisma/internals';
+
+// @ts-ignore
+import { ensureDatabaseExists } from '@prisma/migrate/dist/utils/ensureDatabaseExists';
 
 export async function runMigrations() {
-  const migrate = new Migrate('./prisma/schema.prisma');
+  const schemaContext = await loadSchemaContext({
+    schemaPathFromArg: './prisma/schema.prisma',
+  });
+
+  const migrate = await Migrate.setup({
+    schemaContext,
+    migrationsDirPath: './prisma/migrations',
+  });
+
   const logger = log('migrations');
   logger.debug('running migrations...');
 
   try {
     logger.debug('ensuring database exists...');
-    const dbCreated = await ensureDatabaseExists('apply', './prisma/schema.prisma');
+
+    const dbCreated = await ensureDatabaseExists(schemaContext.primaryDatasource);
     if (dbCreated) {
       logger.info('database created');
     }

@@ -1,5 +1,5 @@
 import { log } from '@/lib/logger';
-import { Prisma, PrismaClient } from '@prisma/client';
+import { Prisma, PrismaClient } from '../../../generated/client';
 import { userViewSchema } from './models/user';
 import { metricDataSchema } from './models/metric';
 import { metadataSchema } from './models/incompleteFile';

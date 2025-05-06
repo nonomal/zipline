@@ -1,5 +1,5 @@
 import { RegistrationResponseJSON } from '@github/webauthn-json/dist/types/browser-ponyfill';
-import { Prisma } from '@prisma/client';
+import { Prisma } from '../../../../../../generated/client';
 import { config } from '@/lib/config';
 import { prisma } from '@/lib/db';
 import { User } from '@/lib/db/models/user';

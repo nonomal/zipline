@@ -1,4 +1,4 @@
-import { IncompleteFileStatus } from '@prisma/client';
+import { IncompleteFileStatus } from '../../../../generated/client';
 import { z } from 'zod';
 
 export type IncompleteFile = {

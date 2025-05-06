@@ -6,7 +6,7 @@ import { log } from '@/lib/logger';
 import { canInteract } from '@/lib/role';
 import { administratorMiddleware } from '@/server/middleware/administrator';
 import { userMiddleware } from '@/server/middleware/user';
-import { Role } from '@prisma/client';
+import { Role } from '../../../../../generated/client';
 import fastifyPlugin from 'fastify-plugin';
 import { readFile } from 'fs/promises';
 import { z } from 'zod';

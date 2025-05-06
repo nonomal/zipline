@@ -3,7 +3,7 @@ import { IncompleteFile } from '@/lib/db/models/incompleteFile';
 import { fetchApi } from '@/lib/fetchApi';
 import { ActionIcon, Badge, Button, Card, Group, Modal, Paper, Stack, Text, Tooltip } from '@mantine/core';
 import { showNotification } from '@mantine/notifications';
-import { IncompleteFileStatus } from '@prisma/client';
+import { IncompleteFileStatus } from '../../../../generated/client';
 import { IconFileDots, IconTrashFilled } from '@tabler/icons-react';
 import { parseAsBoolean, useQueryState } from 'nuqs';
 import { ReactNode } from 'react';

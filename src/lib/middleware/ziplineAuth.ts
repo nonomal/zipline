@@ -1,4 +1,4 @@
-import { Prisma } from '@prisma/client';
+import { Prisma } from '../../../generated/client';
 import { config } from '../config';
 import { decryptToken } from '../crypto';
 import { prisma } from '../db';
