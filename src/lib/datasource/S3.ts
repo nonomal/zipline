@@ -1,20 +1,19 @@
-import { Readable } from 'stream';
-import { Datasource } from './Datasource';
 import {
   DeleteObjectCommand,
   DeleteObjectsCommand,
   GetObjectCommand,
-  ListBucketsCommand,
   ListObjectsCommand,
   PutObjectCommand,
   S3Client,
 } from '@aws-sdk/client-s3';
-import Logger, { log } from '../logger';
-import { ReadableStream } from 'stream/web';
 import { NodeHttpHandler } from '@smithy/node-http-handler';
 import { Agent as HttpAgent } from 'http';
 import { Agent as HttpsAgent } from 'https';
+import { Readable } from 'stream';
+import { ReadableStream } from 'stream/web';
+import Logger, { log } from '../logger';
 import { randomCharacters } from '../random';
+import { Datasource } from './Datasource';
 
 function isOk(code: number) {
   return code >= 200 && code < 300;
