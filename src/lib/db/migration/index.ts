@@ -8,6 +8,7 @@ import { ensureDatabaseExists } from '@prisma/migrate/dist/utils/ensureDatabaseE
 export async function runMigrations() {
   const schemaContext = await loadSchemaContext({
     schemaPathFromArg: './prisma/schema.prisma',
+    printLoadMessage: false,
   });
 
   const migrate = await Migrate.setup({
