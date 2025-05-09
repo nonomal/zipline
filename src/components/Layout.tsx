@@ -48,6 +48,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useState } from 'react';
 import ConfigProvider from './ConfigProvider';
+import VersionBadge from './VersionBadge';
 
 type NavLinks = {
   label: string;
@@ -357,23 +358,27 @@ export default function Layout({ children, config }: { children: React.ReactNode
             }
           })}
 
-        <Divider mt='auto' />
+        <div style={{ marginTop: 'auto' }}>
+          <VersionBadge />
 
-        <ScrollArea mah='auto'>
-          <Box>
-            {config.website.externalLinks.map(({ name, url }, i) => (
-              <NavLink
-                key={i}
-                label={name}
-                leftSection={<IconExternalLink size='1rem' />}
-                variant='light'
-                component={Link}
-                href={url}
-                target='_blank'
-              />
-            ))}
-          </Box>
-        </ScrollArea>
+          <Divider />
+
+          <ScrollArea mah='auto'>
+            <Box>
+              {config.website.externalLinks.map(({ name, url }, i) => (
+                <NavLink
+                  key={i}
+                  label={name}
+                  leftSection={<IconExternalLink size='1rem' />}
+                  variant='light'
+                  component={Link}
+                  href={url}
+                  target='_blank'
+                />
+              ))}
+            </Box>
+          </ScrollArea>
+        </div>
       </AppShell.Navbar>
 
       <AppShell.Main>
