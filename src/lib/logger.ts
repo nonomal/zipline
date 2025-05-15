@@ -15,6 +15,18 @@ export default class Logger {
     return new Logger(`${this.name}::${name}`);
   }
 
+  private isZiplineDebug(): boolean {
+    const debugVar = process.env.DEBUG;
+    if (!debugVar) return false;
+
+    if (debugVar === 'zipline') return true;
+
+    const parts = debugVar.split(',').map((v) => v.trim());
+    if (parts.includes('zipline') || parts.includes('*')) return true;
+
+    return false;
+  }
+
   private format(message: string, level: LoggerLevel) {
     const timestamp = dayjs().format('YYYY-MM-DDTHH:mm:ss');
 
@@ -81,7 +93,7 @@ export default class Logger {
   }
 
   public debug(args: string, extra?: Record<string, unknown>) {
-    if (process.env.DEBUG !== 'zipline') return this;
+    if (!this.isZiplineDebug()) return this;
 
     this.write(args, 'debug', extra);
 
