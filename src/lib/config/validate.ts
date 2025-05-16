@@ -160,6 +160,8 @@ export const schema = z.object({
       adminOnly: z.boolean().default(false),
       showUserSpecific: z.boolean().default(true),
     }),
+    versionChecking: z.boolean().default(true),
+    versionAPI: z.string().url().default('https://zipline-version.diced.sh/'),
   }),
   invites: z.object({
     enabled: z.boolean().default(true),

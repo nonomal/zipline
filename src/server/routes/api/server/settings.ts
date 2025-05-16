@@ -166,6 +166,9 @@ export default fastifyPlugin(
             featuresMetricsAdminOnly: z.boolean(),
             featuresMetricsShowUserSpecific: z.boolean(),
 
+            featuresVersionChecking: z.boolean(),
+            featuresVersionAPI: z.string().url(),
+
             invitesEnabled: z.boolean(),
             invitesLength: z.number().min(1).max(64),
 

@@ -1,5 +1,15 @@
 import { Response } from '@/lib/api/response';
-import { Button, LoadingOverlay, NumberInput, Paper, SimpleGrid, Switch, Title } from '@mantine/core';
+import {
+  Anchor,
+  Button,
+  LoadingOverlay,
+  NumberInput,
+  Paper,
+  SimpleGrid,
+  Switch,
+  TextInput,
+  Title,
+} from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { IconDeviceFloppy } from '@tabler/icons-react';
 import { useRouter } from 'next/router';
@@ -25,6 +35,8 @@ export default function ServerSettingsFeatures({
       featuresMetricsEnabled: true,
       featuresMetricsAdminOnly: false,
       featuresMetricsShowUserSpecific: true,
+      featuresVersionChecking: true,
+      featuresVersionAPI: 'https://zipline-version.diced.sh/',
     },
   });
 
@@ -43,6 +55,8 @@ export default function ServerSettingsFeatures({
       featuresMetricsEnabled: data?.featuresMetricsEnabled ?? true,
       featuresMetricsAdminOnly: data?.featuresMetricsAdminOnly ?? false,
       featuresMetricsShowUserSpecific: data?.featuresMetricsShowUserSpecific ?? true,
+      featuresVersionChecking: data?.featuresVersionChecking ?? true,
+      featuresVersionAPI: data?.featuresVersionAPI ?? 'https://zipline-version.diced.sh/',
     });
   }, [data]);
 
@@ -107,7 +121,7 @@ export default function ServerSettingsFeatures({
             description='Shows metrics specific to each user, for all users.'
             {...form.getInputProps('featuresMetricsShowUserSpecific', { type: 'checkbox' })}
           />
-
+          <div />
           <Switch
             label='Enable Thumbnails'
             description='Enables thumbnail generation for images. Requires a server restart.'
@@ -121,6 +135,30 @@ export default function ServerSettingsFeatures({
             min={1}
             max={16}
             {...form.getInputProps('featuresThumbnailsNumberThreads')}
+          />
+
+          <Switch
+            label='Version Checking'
+            description='Enable version checking for the server. This will check for updates and display the status on the sidebar to all users.'
+            {...form.getInputProps('featuresVersionChecking', { type: 'checkbox' })}
+          />
+          <TextInput
+            label='Version API URL'
+            description={
+              <>
+                The URL of the version checking server. The default is{' '}
+                <Anchor size='xs' href='zipline-version.diced.sh' target='_blank'>
+                  https://zipline-version.diced.sh
+                </Anchor>
+                . Visit the{' '}
+                <Anchor size='xs' href='https://github.com/diced/zipline-version-worker' target='_blank'>
+                  GitHub
+                </Anchor>{' '}
+                to host your own version checking server.
+              </>
+            }
+            placeholder='https://zipline-version.diced.sh/'
+            {...form.getInputProps('featuresVersionAPI')}
           />
         </SimpleGrid>
 
