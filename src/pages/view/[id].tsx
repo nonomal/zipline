@@ -245,7 +245,13 @@ export default function ViewFileId({
     <>
       {meta}
       <Center h='100%'>
-        <Paper m='md' p='md' shadow='md' radius='md' withBorder>
+        <Paper
+          m='md'
+          p='md'
+          shadow='md'
+          radius='md'
+          withBorder
+        >
           <Group justify='space-between' mb='sm'>
             <Group>
               <Text size='lg' fw={700} display='flex'>
