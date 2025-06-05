@@ -6,6 +6,7 @@ import { User } from '@/lib/db/models/user';
 import { userMiddleware } from '@/server/middleware/user';
 import fastifyPlugin from 'fastify-plugin';
 import { log } from '@/lib/logger';
+import { FastifyReply, FastifyRequest } from 'fastify';
 
 export type ApiUserMfaPasskeyResponse = User | User['passkeys'];
 
@@ -18,67 +19,79 @@ type Body = {
 
 const logger = log('api').c('user').c('mfa').c('passkey');
 
+const passkeysEnabledHandler = (_: FastifyRequest, res: FastifyReply, done: () => void) => {
+  if (!config.mfa.passkeys) {
+    return res.badRequest('Passkeys are not enabled');
+  }
+
+  done();
+};
+
 export const PATH = '/api/user/mfa/passkey';
 export default fastifyPlugin(
   (server, _, done) => {
-    server.route<{
-      Body: Body;
-    }>({
-      url: PATH,
-      method: ['GET', 'POST'],
-      preHandler: [userMiddleware],
-      handler: async (req, res) => {
-        if (!config.mfa.passkeys) return res.badRequest('Passkeys are not enabled');
-
-        if (req.method === 'POST') {
-          const { reg, name } = req.body;
-          if (!reg) return res.badRequest('Missing webauthn response');
-          if (!name) return res.badRequest('Missing name');
-
-          const user = await prisma.user.update({
-            where: { id: req.user.id },
-            data: {
-              passkeys: {
-                create: {
-                  name,
-                  reg: reg as unknown as Prisma.InputJsonValue,
-                  lastUsed: new Date(),
-                },
-              },
-            },
-          });
-
-          logger.info('user created a new passkey', {
-            user: user.username,
-            name,
-            reg: reg.id,
-          });
-
-          return res.send(user);
-        } else if (req.method === 'DELETE') {
-          const { id } = req.body;
-          if (!id) return res.badRequest('Missing id');
-
-          const user = await prisma.user.update({
-            where: { id: req.user.id },
-            data: {
-              passkeys: {
-                delete: { id },
-              },
-            },
-          });
-
-          logger.info('user deleted a passkey', {
-            user: user.username,
-            id,
-          });
-
-          return res.send(user);
-        }
-
-        return res.send(req.user.passkeys);
-      },
+    server.get(PATH, { preHandler: [userMiddleware, passkeysEnabledHandler] }, async (req, res) => {
+      return res.send(req.user.passkeys);
     });
+
+    server.post<{ Body: Body }>(
+      PATH,
+      {
+        preHandler: [userMiddleware, passkeysEnabledHandler],
+        config: { rateLimit: { max: 1, timeWindow: '5 seconds', allowList: [] } },
+      },
+      async (req, res) => {
+        const { reg, name } = req.body;
+        if (!reg) return res.badRequest('Missing webauthn response');
+        if (!name) return res.badRequest('Missing name');
+
+        const user = await prisma.user.update({
+          where: { id: req.user.id },
+          data: {
+            passkeys: {
+              create: {
+                name,
+                reg: reg as unknown as Prisma.InputJsonValue,
+                lastUsed: new Date(),
+              },
+            },
+          },
+        });
+
+        logger.info('user created a new passkey', {
+          user: user.username,
+          name,
+          reg: reg.id,
+        });
+
+        return res.send(user);
+      },
+    );
+
+    server.delete<{ Body: Body }>(
+      PATH,
+      { preHandler: [userMiddleware, passkeysEnabledHandler] },
+      async (req, res) => {
+        const { id } = req.body;
+        if (!id) return res.badRequest('Missing id');
+
+        const user = await prisma.user.update({
+          where: { id: req.user.id },
+          data: {
+            passkeys: {
+              delete: { id },
+            },
+          },
+        });
+
+        logger.info('user deleted a passkey', {
+          user: user.username,
+          id,
+        });
+
+        return res.send(user);
+      },
+    );
 
     done();
   },
