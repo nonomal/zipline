@@ -1,6 +1,6 @@
 import RelativeDate from '@/components/RelativeDate';
 import FileModal from '@/components/file/DashboardFile/FileModal';
-import { addMultipleToFolder, copyFile, deleteFile } from '@/components/file/actions';
+import { addMultipleToFolder, copyFile, deleteFile, downloadFile } from '@/components/file/actions';
 import { Response } from '@/lib/api/response';
 import { bytes } from '@/lib/bytes';
 import { type File } from '@/lib/db/models/file';
@@ -30,6 +30,7 @@ import {
 import { useClipboard } from '@mantine/hooks';
 import {
   IconCopy,
+  IconDownload,
   IconExternalLink,
   IconFile,
   IconGridPatternFilled,
@@ -518,6 +519,18 @@ export default function FileTable({ id }: { id?: string }) {
                       }}
                     >
                       <IconCopy size='1rem' />
+                    </ActionIcon>
+                  </Tooltip>
+
+                  <Tooltip label='Download file'>
+                    <ActionIcon
+                      color='gray'
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        downloadFile(file);
+                      }}
+                    >
+                      <IconDownload size='1rem' />
                     </ActionIcon>
                   </Tooltip>
 
