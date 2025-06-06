@@ -35,6 +35,8 @@ export default function UploadFile({ title, folder }: { title?: string; folder?:
   const clipboard = useClipboard();
   const config = useConfig();
 
+  const isMac = typeof navigator !== 'undefined' && navigator.userAgent.includes('Macintosh');
+
   const [options, ephemeral, clearEphemeral] = useUploadOptionsStore(
     useShallow((state) => [state.options, state.ephemeral, state.clearEphemeral]),
   );
@@ -165,7 +167,8 @@ export default function UploadFile({ title, folder }: { title?: string; folder?:
               Drag images here or click to select files
             </Text>
             <Text size='sm' inline mt='xs'>
-              Or <Kbd size='xs'>Ctrl</Kbd> + <Kbd size='xs'>V</Kbd> to paste images from clipboard
+              Or <Kbd size='xs'>{isMac ? '⌘' : 'Ctrl'}</Kbd> + <Kbd size='xs'>V</Kbd> to paste images from
+              clipboard
             </Text>
             <Text size='sm' c='dimmed' inline mt={7}>
               Attach as many files as you like, they will show up below to review before uploading.
