@@ -6,7 +6,7 @@ import { useRouter } from 'next/router';
 import { useEffect } from 'react';
 import { settingsOnSubmit } from '../settingsOnSubmit';
 
-export default function ServerSettingsHttpWebhook({
+export default function HttpWebhook({
   swr: { data, isLoading },
 }: {
   swr: { data: Response['/api/server/settings'] | undefined; isLoading: boolean };
@@ -17,6 +17,9 @@ export default function ServerSettingsHttpWebhook({
       httpWebhookOnUpload: '',
       httpWebhookOnShorten: '',
     },
+    enhanceGetInputProps: (payload) => ({
+      disabled: data?.tampered?.includes(payload.field) || false,
+    }),
   });
 
   const onSubmit = async (values: typeof form.values) => {
@@ -37,8 +40,8 @@ export default function ServerSettingsHttpWebhook({
     if (!data) return;
 
     form.setValues({
-      httpWebhookOnUpload: data?.httpWebhookOnUpload ?? '',
-      httpWebhookOnShorten: data?.httpWebhookOnShorten ?? '',
+      httpWebhookOnUpload: data.settings.httpWebhookOnUpload ?? '',
+      httpWebhookOnShorten: data.settings.httpWebhookOnShorten ?? '',
     });
   }, [data]);
 

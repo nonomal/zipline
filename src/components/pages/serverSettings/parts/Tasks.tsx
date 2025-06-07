@@ -6,7 +6,7 @@ import { useRouter } from 'next/router';
 import { useEffect } from 'react';
 import { settingsOnSubmit } from '../settingsOnSubmit';
 
-export default function ServerSettingsTasks({
+export default function Tasks({
   swr: { data, isLoading },
 }: {
   swr: { data: Response['/api/server/settings'] | undefined; isLoading: boolean };
@@ -20,6 +20,9 @@ export default function ServerSettingsTasks({
       tasksThumbnailsInterval: '30m',
       tasksMetricsInterval: '30m',
     },
+    enhanceGetInputProps: (payload) => ({
+      disabled: data?.tampered?.includes(payload.field) || false,
+    }),
   });
 
   const onSubmit = settingsOnSubmit(router, form);
@@ -28,11 +31,11 @@ export default function ServerSettingsTasks({
     if (!data) return;
 
     form.setValues({
-      tasksDeleteInterval: data?.tasksDeleteInterval ?? '30m',
-      tasksClearInvitesInterval: data?.tasksClearInvitesInterval ?? '30m',
-      tasksMaxViewsInterval: data?.tasksMaxViewsInterval ?? '30m',
-      tasksThumbnailsInterval: data?.tasksThumbnailsInterval ?? '30m',
-      tasksMetricsInterval: data?.tasksMetricsInterval ?? '30m',
+      tasksDeleteInterval: data.settings.tasksDeleteInterval ?? '30m',
+      tasksClearInvitesInterval: data.settings.tasksClearInvitesInterval ?? '30m',
+      tasksMaxViewsInterval: data.settings.tasksMaxViewsInterval ?? '30m',
+      tasksThumbnailsInterval: data.settings.tasksThumbnailsInterval ?? '30m',
+      tasksMetricsInterval: data.settings.tasksMetricsInterval ?? '30m',
     });
   }, [data]);
 

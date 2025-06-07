@@ -19,7 +19,7 @@ import { settingsOnSubmit } from '../settingsOnSubmit';
 
 type DiscordEmbed = Record<string, any>;
 
-export default function ServerSettingsDiscord({
+export default function Discord({
   swr: { data, isLoading },
 }: {
   swr: { data: Response['/api/server/settings'] | undefined; isLoading: boolean };
@@ -65,6 +65,9 @@ export default function ServerSettingsDiscord({
       discordOnUploadEmbedTimestamp: false,
       discordOnUploadEmbedUrl: false,
     },
+    enhanceGetInputProps: (payload) => ({
+      disabled: data?.tampered?.includes(payload.field) || false,
+    }),
   });
 
   const formOnShorten = useForm({
@@ -124,41 +127,45 @@ export default function ServerSettingsDiscord({
     if (!data) return;
 
     formMain.setValues({
-      discordWebhookUrl: data?.discordWebhookUrl ?? '',
-      discordUsername: data?.discordUsername ?? '',
-      discordAvatarUrl: data?.discordAvatarUrl ?? '',
+      discordWebhookUrl: data.settings.discordWebhookUrl ?? '',
+      discordUsername: data.settings.discordUsername ?? '',
+      discordAvatarUrl: data.settings.discordAvatarUrl ?? '',
     });
 
     formOnUpload.setValues({
-      discordOnUploadWebhookUrl: data?.discordOnUploadWebhookUrl ?? '',
-      discordOnUploadUsername: data?.discordOnUploadUsername ?? '',
-      discordOnUploadAvatarUrl: data?.discordOnUploadAvatarUrl ?? '',
+      discordOnUploadWebhookUrl: data.settings.discordOnUploadWebhookUrl ?? '',
+      discordOnUploadUsername: data.settings.discordOnUploadUsername ?? '',
+      discordOnUploadAvatarUrl: data.settings.discordOnUploadAvatarUrl ?? '',
 
-      discordOnUploadContent: data?.discordOnUploadContent ?? '',
-      discordOnUploadEmbed: data?.discordOnUploadEmbed ? true : false,
-      discordOnUploadEmbedTitle: (data?.discordOnUploadEmbed as DiscordEmbed)?.title ?? '',
-      discordOnUploadEmbedDescription: (data?.discordOnUploadEmbed as DiscordEmbed)?.description ?? '',
-      discordOnUploadEmbedFooter: (data?.discordOnUploadEmbed as DiscordEmbed)?.footer ?? '',
-      discordOnUploadEmbedColor: (data?.discordOnUploadEmbed as DiscordEmbed)?.color ?? '',
-      discordOnUploadEmbedThumbnail: (data?.discordOnUploadEmbed as DiscordEmbed)?.thumbnail ?? false,
-      discordOnUploadEmbedImageOrVideo: (data?.discordOnUploadEmbed as DiscordEmbed)?.imageOrVideo ?? false,
-      discordOnUploadEmbedTimestamp: (data?.discordOnUploadEmbed as DiscordEmbed)?.timestamp ?? false,
-      discordOnUploadEmbedUrl: (data?.discordOnUploadEmbed as DiscordEmbed)?.url ?? false,
+      discordOnUploadContent: data.settings.discordOnUploadContent ?? '',
+      discordOnUploadEmbed: data.settings.discordOnUploadEmbed ? true : false,
+      discordOnUploadEmbedTitle: (data.settings.discordOnUploadEmbed as DiscordEmbed)?.title ?? '',
+      discordOnUploadEmbedDescription:
+        (data.settings.discordOnUploadEmbed as DiscordEmbed)?.description ?? '',
+      discordOnUploadEmbedFooter: (data.settings.discordOnUploadEmbed as DiscordEmbed)?.footer ?? '',
+      discordOnUploadEmbedColor: (data.settings.discordOnUploadEmbed as DiscordEmbed)?.color ?? '',
+      discordOnUploadEmbedThumbnail: (data.settings.discordOnUploadEmbed as DiscordEmbed)?.thumbnail ?? false,
+      discordOnUploadEmbedImageOrVideo:
+        (data.settings.discordOnUploadEmbed as DiscordEmbed)?.imageOrVideo ?? false,
+      discordOnUploadEmbedTimestamp: (data.settings.discordOnUploadEmbed as DiscordEmbed)?.timestamp ?? false,
+      discordOnUploadEmbedUrl: (data.settings.discordOnUploadEmbed as DiscordEmbed)?.url ?? false,
     });
 
     formOnShorten.setValues({
-      discordOnShortenWebhookUrl: data?.discordOnShortenWebhookUrl ?? '',
-      discordOnShortenUsername: data?.discordOnShortenUsername ?? '',
-      discordOnShortenAvatarUrl: data?.discordOnShortenAvatarUrl ?? '',
+      discordOnShortenWebhookUrl: data.settings.discordOnShortenWebhookUrl ?? '',
+      discordOnShortenUsername: data.settings.discordOnShortenUsername ?? '',
+      discordOnShortenAvatarUrl: data.settings.discordOnShortenAvatarUrl ?? '',
 
-      discordOnShortenContent: data?.discordOnShortenContent ?? '',
-      discordOnShortenEmbed: data?.discordOnShortenEmbed ? true : false,
-      discordOnShortenEmbedTitle: (data?.discordOnShortenEmbed as DiscordEmbed)?.title ?? '',
-      discordOnShortenEmbedDescription: (data?.discordOnShortenEmbed as DiscordEmbed)?.description ?? '',
-      discordOnShortenEmbedFooter: (data?.discordOnShortenEmbed as DiscordEmbed)?.footer ?? '',
-      discordOnShortenEmbedColor: (data?.discordOnShortenEmbed as DiscordEmbed)?.color ?? '',
-      discordOnShortenEmbedTimestamp: (data?.discordOnShortenEmbed as DiscordEmbed)?.timestamp ?? false,
-      discordOnShortenEmbedUrl: (data?.discordOnShortenEmbed as DiscordEmbed)?.url ?? false,
+      discordOnShortenContent: data.settings.discordOnShortenContent ?? '',
+      discordOnShortenEmbed: data.settings.discordOnShortenEmbed ? true : false,
+      discordOnShortenEmbedTitle: (data.settings.discordOnShortenEmbed as DiscordEmbed)?.title ?? '',
+      discordOnShortenEmbedDescription:
+        (data.settings.discordOnShortenEmbed as DiscordEmbed)?.description ?? '',
+      discordOnShortenEmbedFooter: (data.settings.discordOnShortenEmbed as DiscordEmbed)?.footer ?? '',
+      discordOnShortenEmbedColor: (data.settings.discordOnShortenEmbed as DiscordEmbed)?.color ?? '',
+      discordOnShortenEmbedTimestamp:
+        (data.settings.discordOnShortenEmbed as DiscordEmbed)?.timestamp ?? false,
+      discordOnShortenEmbedUrl: (data.settings.discordOnShortenEmbed as DiscordEmbed)?.url ?? false,
     });
   }, [data]);
 

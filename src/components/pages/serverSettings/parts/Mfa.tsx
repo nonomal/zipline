@@ -6,7 +6,7 @@ import { useRouter } from 'next/router';
 import { useEffect } from 'react';
 import { settingsOnSubmit } from '../settingsOnSubmit';
 
-export default function ServerSettingsMfa({
+export default function Mfa({
   swr: { data, isLoading },
 }: {
   swr: { data: Response['/api/server/settings'] | undefined; isLoading: boolean };
@@ -18,6 +18,9 @@ export default function ServerSettingsMfa({
       mfaTotpIssuer: 'Zipline',
       mfaPasskeys: false,
     },
+    enhanceGetInputProps: (payload) => ({
+      disabled: data?.tampered?.includes(payload.field) || false,
+    }),
   });
 
   const onSubmit = settingsOnSubmit(router, form);
@@ -26,9 +29,9 @@ export default function ServerSettingsMfa({
     if (!data) return;
 
     form.setValues({
-      mfaTotpEnabled: data?.mfaTotpEnabled ?? false,
-      mfaTotpIssuer: data?.mfaTotpIssuer ?? 'Zipline',
-      mfaPasskeys: data?.mfaPasskeys,
+      mfaTotpEnabled: data.settings.mfaTotpEnabled ?? false,
+      mfaTotpIssuer: data.settings.mfaTotpIssuer ?? 'Zipline',
+      mfaPasskeys: data.settings.mfaPasskeys,
     });
   }, [data]);
 

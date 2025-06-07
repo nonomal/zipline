@@ -7,46 +7,46 @@ function SettingsSkeleton() {
   return <Skeleton height={280} animate />;
 }
 
-const ServerSettingsCore = dynamic(() => import('./parts/ServerSettingsCore'), {
+const Core = dynamic(() => import('./parts/Core'), {
   loading: () => <SettingsSkeleton />,
 });
-const ServerSettingsChunks = dynamic(() => import('./parts/ServerSettingsChunks'), {
+const Chunks = dynamic(() => import('./parts/Chunks'), {
   loading: () => <SettingsSkeleton />,
 });
-const ServerSettingsDiscord = dynamic(() => import('./parts/ServerSettingsDiscord'), {
+const Discord = dynamic(() => import('./parts/Discord'), {
   loading: () => <SettingsSkeleton />,
 });
-const ServerSettingsFeatures = dynamic(() => import('./parts/ServerSettingsFeatures'), {
+const Features = dynamic(() => import('./parts/Features'), {
   loading: () => <SettingsSkeleton />,
 });
-const ServerSettingsFiles = dynamic(() => import('./parts/ServerSettingsFiles'), {
+const Files = dynamic(() => import('./parts/Files'), {
   loading: () => <SettingsSkeleton />,
 });
-const ServerSettingsHttpWebhook = dynamic(() => import('./parts/ServerSettingsHttpWebhook'), {
+const HttpWebhook = dynamic(() => import('./parts/HttpWebhook'), {
   loading: () => <SettingsSkeleton />,
 });
-const ServerSettingsInvites = dynamic(() => import('./parts/ServerSettingsInvites'), {
+const Invites = dynamic(() => import('./parts/Invites'), {
   loading: () => <SettingsSkeleton />,
 });
-const ServerSettingsMfa = dynamic(() => import('./parts/ServerSettingsMfa'), {
+const Mfa = dynamic(() => import('./parts/Mfa'), {
   loading: () => <SettingsSkeleton />,
 });
-const ServerSettingsOauth = dynamic(() => import('./parts/ServerSettingsOauth'), {
+const Oauth = dynamic(() => import('./parts/Oauth'), {
   loading: () => <SettingsSkeleton />,
 });
-const ServerSettingsRatelimit = dynamic(() => import('./parts/ServerSettingsRatelimit'), {
+const Ratelimit = dynamic(() => import('./parts/Ratelimit'), {
   loading: () => <SettingsSkeleton />,
 });
-const ServerSettingsTasks = dynamic(() => import('./parts/ServerSettingsTasks'), {
+const Tasks = dynamic(() => import('./parts/Tasks'), {
   loading: () => <SettingsSkeleton />,
 });
-const ServerSettingsUrls = dynamic(() => import('./parts/ServerSettingsUrls'), {
+const Urls = dynamic(() => import('./parts/Urls'), {
   loading: () => <SettingsSkeleton />,
 });
-const ServerSettingsWebsite = dynamic(() => import('./parts/ServerSettingsWebsite'), {
+const Website = dynamic(() => import('./parts/Website'), {
   loading: () => <SettingsSkeleton />,
 });
-const ServerSettingsPWA = dynamic(() => import('./parts/ServerSettingsPWA'), {
+const PWA = dynamic(() => import('./parts/PWA'), {
   loading: () => <SettingsSkeleton />,
 });
 
@@ -64,31 +64,31 @@ export default function DashboardSettings() {
           <div>Error loading server settings</div>
         ) : (
           <>
-            <ServerSettingsCore swr={{ data, isLoading }} />
-            <ServerSettingsChunks swr={{ data, isLoading }} />
-            <ServerSettingsTasks swr={{ data, isLoading }} />
-            <ServerSettingsMfa swr={{ data, isLoading }} />
+            <Core swr={{ data, isLoading }} />
+            <Chunks swr={{ data, isLoading }} />
+            <Tasks swr={{ data, isLoading }} />
+            <Mfa swr={{ data, isLoading }} />
 
-            <ServerSettingsFeatures swr={{ data, isLoading }} />
-            <ServerSettingsFiles swr={{ data, isLoading }} />
+            <Features swr={{ data, isLoading }} />
+            <Files swr={{ data, isLoading }} />
             <Stack>
-              <ServerSettingsUrls swr={{ data, isLoading }} />
-              <ServerSettingsInvites swr={{ data, isLoading }} />
+              <Urls swr={{ data, isLoading }} />
+              <Invites swr={{ data, isLoading }} />
             </Stack>
 
-            <ServerSettingsRatelimit swr={{ data, isLoading }} />
-            <ServerSettingsWebsite swr={{ data, isLoading }} />
-            <ServerSettingsOauth swr={{ data, isLoading }} />
+            <Ratelimit swr={{ data, isLoading }} />
+            <Website swr={{ data, isLoading }} />
+            <Oauth swr={{ data, isLoading }} />
 
-            <ServerSettingsPWA swr={{ data, isLoading }} />
+            <PWA swr={{ data, isLoading }} />
 
-            <ServerSettingsHttpWebhook swr={{ data, isLoading }} />
+            <HttpWebhook swr={{ data, isLoading }} />
           </>
         )}
       </SimpleGrid>
 
       <Stack mt='md' gap='md'>
-        {error ? null : <ServerSettingsDiscord swr={{ data, isLoading }} />}
+        {error ? null : <Discord swr={{ data, isLoading }} />}
       </Stack>
     </>
   );

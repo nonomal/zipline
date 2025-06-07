@@ -2,7 +2,8 @@ import { tmpdir } from 'os';
 import { join, resolve } from 'path';
 import { type ZodIssue, z } from 'zod';
 import { log } from '../logger';
-import { PROP_TO_ENV, ParsedConfig } from './read';
+import { ParsedConfig } from './read';
+import { PROP_TO_ENV } from './read/env';
 
 declare global {
   // eslint-disable-next-line @typescript-eslint/no-namespace

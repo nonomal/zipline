@@ -4,8 +4,8 @@ import { validateConfigObject, Config } from './validate';
 let config: Config;
 
 declare global {
-  // eslint-disable-next-line no-var
-  var __config__: Config;
+  /* eslint-disable-line no-var */ var __config__: Config;
+  /* eslint-disable-line no-var */ var __tamperedConfig__: string[];
 }
 
 const reloadSettings = async () => {

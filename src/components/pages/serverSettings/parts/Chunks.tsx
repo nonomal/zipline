@@ -6,7 +6,7 @@ import { useRouter } from 'next/router';
 import { useEffect } from 'react';
 import { settingsOnSubmit } from '../settingsOnSubmit';
 
-export default function ServerSettingsChunks({
+export default function Chunks({
   swr: { data, isLoading },
 }: {
   swr: { data: Response['/api/server/settings'] | undefined; isLoading: boolean };
@@ -18,6 +18,12 @@ export default function ServerSettingsChunks({
       chunksMax: '95mb',
       chunksSize: '25mb',
     },
+    enhanceGetInputProps: (payload: any): object => ({
+      disabled:
+        data?.tampered?.includes(payload.field) ||
+        (payload.field !== 'chunksEnabled' && !form.values.chunksEnabled) ||
+        false,
+    }),
   });
 
   const onSubmit = settingsOnSubmit(router, form);
@@ -26,9 +32,9 @@ export default function ServerSettingsChunks({
     if (!data) return;
 
     form.setValues({
-      chunksEnabled: data?.chunksEnabled ?? true,
-      chunksMax: data!.chunksMax ?? '',
-      chunksSize: data!.chunksSize ?? '',
+      chunksEnabled: data.settings.chunksEnabled ?? true,
+      chunksMax: data.settings.chunksMax ?? '',
+      chunksSize: data.settings.chunksSize ?? '',
     });
   }, [data]);
 

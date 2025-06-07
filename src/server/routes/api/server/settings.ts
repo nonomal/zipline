@@ -1,6 +1,6 @@
 import { bytes } from '@/lib/bytes';
 import { reloadSettings } from '@/lib/config';
-import { readDatabaseSettings } from '@/lib/config/read';
+import type { readDatabaseSettings } from '@/lib/config/read/db';
 import { prisma } from '@/lib/db';
 import { log } from '@/lib/logger';
 import { secondlyRatelimit } from '@/lib/ratelimits';
@@ -16,7 +16,7 @@ import { z } from 'zod';
 
 type Settings = Awaited<ReturnType<typeof readDatabaseSettings>>;
 
-export type ApiServerSettingsResponse = Settings;
+export type ApiServerSettingsResponse = { settings: Settings; tampered: string[] };
 type Body = Partial<Settings>;
 
 const reservedRoutes = ['/dashboard', '/api', '/raw', '/robots.txt', '/manifest.json', '/favicon.ico'];
@@ -72,7 +72,7 @@ export default fastifyPlugin(
 
         if (!settings) return res.notFound('no settings table found');
 
-        return res.send(settings);
+        return res.send({ settings, tampered: global.__tamperedConfig__ || [] });
       },
     );
 
@@ -377,7 +377,7 @@ export default fastifyPlugin(
           by: req.user.username,
         });
 
-        return res.send(newSettings);
+        return res.send({ settings: newSettings, tampered: global.__tamperedConfig__ || [] });
       },
     );
 

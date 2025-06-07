@@ -6,7 +6,7 @@ import { useRouter } from 'next/router';
 import { useEffect } from 'react';
 import { settingsOnSubmit } from '../settingsOnSubmit';
 
-export default function ServerSettingsInvites({
+export default function Invites({
   swr: { data, isLoading },
 }: {
   swr: { data: Response['/api/server/settings'] | undefined; isLoading: boolean };
@@ -17,6 +17,12 @@ export default function ServerSettingsInvites({
       invitesEnabled: true,
       invitesLength: 6,
     },
+    enhanceGetInputProps: (payload: any): object => ({
+      disabled:
+        data?.tampered?.includes(payload.field) ||
+        (payload.field !== 'invitesEnabled' && !form.values.invitesEnabled) ||
+        false,
+    }),
   });
 
   const onSubmit = settingsOnSubmit(router, form);
@@ -25,8 +31,8 @@ export default function ServerSettingsInvites({
     if (!data) return;
 
     form.setValues({
-      invitesEnabled: data?.invitesEnabled ?? true,
-      invitesLength: data?.invitesLength ?? 6,
+      invitesEnabled: data.settings.invitesEnabled ?? true,
+      invitesLength: data.settings.invitesLength ?? 6,
     });
   }, [data]);
 
@@ -50,7 +56,6 @@ export default function ServerSettingsInvites({
             placeholder='6'
             min={1}
             max={64}
-            disabled={!form.values.invitesEnabled}
             {...form.getInputProps('invitesLength')}
           />
         </SimpleGrid>

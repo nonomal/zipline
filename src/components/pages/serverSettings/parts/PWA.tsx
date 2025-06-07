@@ -17,7 +17,7 @@ import { useRouter } from 'next/router';
 import { useEffect } from 'react';
 import { settingsOnSubmit } from '../settingsOnSubmit';
 
-export default function ServerSettingsPWA({
+export default function PWA({
   swr: { data, isLoading },
 }: {
   swr: { data: Response['/api/server/settings'] | undefined; isLoading: boolean };
@@ -32,6 +32,12 @@ export default function ServerSettingsPWA({
       pwaThemeColor: '',
       pwaBackgroundColor: '',
     },
+    enhanceGetInputProps: (payload: any): object => ({
+      disabled:
+        data?.tampered?.includes(payload.field) ||
+        (payload.field !== 'pwaEnabled' && !form.values.pwaEnabled) ||
+        false,
+    }),
   });
 
   const onSubmit = async (values: typeof form.values) => {
@@ -53,13 +59,15 @@ export default function ServerSettingsPWA({
   };
 
   useEffect(() => {
+    if (!data) return;
+
     form.setValues({
-      pwaEnabled: data?.pwaEnabled ?? false,
-      pwaTitle: data?.pwaTitle ?? '',
-      pwaShortName: data?.pwaShortName ?? '',
-      pwaDescription: data?.pwaDescription ?? '',
-      pwaThemeColor: data?.pwaThemeColor ?? '',
-      pwaBackgroundColor: data?.pwaBackgroundColor ?? '',
+      pwaEnabled: data.settings.pwaEnabled ?? false,
+      pwaTitle: data.settings.pwaTitle ?? '',
+      pwaShortName: data.settings.pwaShortName ?? '',
+      pwaDescription: data.settings.pwaDescription ?? '',
+      pwaThemeColor: data.settings.pwaThemeColor ?? '',
+      pwaBackgroundColor: data.settings.pwaBackgroundColor ?? '',
     });
   }, [data]);
 
@@ -86,7 +94,6 @@ export default function ServerSettingsPWA({
             label='Title'
             description='The title for the PWA'
             placeholder='Zipline'
-            disabled={!form.values.pwaEnabled}
             {...form.getInputProps('pwaTitle')}
           />
 
@@ -94,7 +101,6 @@ export default function ServerSettingsPWA({
             label='Short Name'
             description='The short name for the PWA'
             placeholder='Zipline'
-            disabled={!form.values.pwaEnabled}
             {...form.getInputProps('pwaShortName')}
           />
 
@@ -102,7 +108,6 @@ export default function ServerSettingsPWA({
             label='Description'
             description='The description for the PWA'
             placeholder='Zipline'
-            disabled={!form.values.pwaEnabled}
             {...form.getInputProps('pwaDescription')}
           />
 
@@ -110,7 +115,6 @@ export default function ServerSettingsPWA({
             label='Theme Color'
             description='The theme color for the PWA'
             placeholder='#000000'
-            disabled={!form.values.pwaEnabled}
             {...form.getInputProps('pwaThemeColor')}
           />
 
@@ -118,7 +122,6 @@ export default function ServerSettingsPWA({
             label='Background Color'
             description='The background color for the PWA'
             placeholder='#ffffff'
-            disabled={!form.values.pwaEnabled}
             {...form.getInputProps('pwaBackgroundColor')}
           />
         </SimpleGrid>

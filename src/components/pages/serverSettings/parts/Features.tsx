@@ -16,7 +16,7 @@ import { useRouter } from 'next/router';
 import { useEffect } from 'react';
 import { settingsOnSubmit } from '../settingsOnSubmit';
 
-export default function ServerSettingsFeatures({
+export default function Features({
   swr: { data, isLoading },
 }: {
   swr: { data: Response['/api/server/settings'] | undefined; isLoading: boolean };
@@ -38,25 +38,30 @@ export default function ServerSettingsFeatures({
       featuresVersionChecking: true,
       featuresVersionAPI: 'https://zipline-version.diced.sh/',
     },
+    enhanceGetInputProps: (payload) => ({
+      disabled: data?.tampered?.includes(payload.field) || false,
+    }),
   });
 
   const onSubmit = settingsOnSubmit(router, form);
 
   useEffect(() => {
+    if (!data) return;
+
     form.setValues({
-      featuresImageCompression: data?.featuresImageCompression ?? true,
-      featuresRobotsTxt: data?.featuresRobotsTxt ?? true,
-      featuresHealthcheck: data?.featuresHealthcheck ?? true,
-      featuresUserRegistration: data?.featuresUserRegistration ?? false,
-      featuresOauthRegistration: data?.featuresOauthRegistration ?? true,
-      featuresDeleteOnMaxViews: data?.featuresDeleteOnMaxViews ?? true,
-      featuresThumbnailsEnabled: data?.featuresThumbnailsEnabled ?? true,
-      featuresThumbnailsNumberThreads: data?.featuresThumbnailsNumberThreads ?? 4,
-      featuresMetricsEnabled: data?.featuresMetricsEnabled ?? true,
-      featuresMetricsAdminOnly: data?.featuresMetricsAdminOnly ?? false,
-      featuresMetricsShowUserSpecific: data?.featuresMetricsShowUserSpecific ?? true,
-      featuresVersionChecking: data?.featuresVersionChecking ?? true,
-      featuresVersionAPI: data?.featuresVersionAPI ?? 'https://zipline-version.diced.sh/',
+      featuresImageCompression: data.settings.featuresImageCompression ?? true,
+      featuresRobotsTxt: data.settings.featuresRobotsTxt ?? true,
+      featuresHealthcheck: data.settings.featuresHealthcheck ?? true,
+      featuresUserRegistration: data.settings.featuresUserRegistration ?? false,
+      featuresOauthRegistration: data.settings.featuresOauthRegistration ?? true,
+      featuresDeleteOnMaxViews: data.settings.featuresDeleteOnMaxViews ?? true,
+      featuresThumbnailsEnabled: data.settings.featuresThumbnailsEnabled ?? true,
+      featuresThumbnailsNumberThreads: data.settings.featuresThumbnailsNumberThreads ?? 4,
+      featuresMetricsEnabled: data.settings.featuresMetricsEnabled ?? true,
+      featuresMetricsAdminOnly: data.settings.featuresMetricsAdminOnly ?? false,
+      featuresMetricsShowUserSpecific: data.settings.featuresMetricsShowUserSpecific ?? true,
+      featuresVersionChecking: data.settings.featuresVersionChecking ?? true,
+      featuresVersionAPI: data.settings.featuresVersionAPI ?? 'https://zipline-version.diced.sh/',
     });
   }, [data]);
 

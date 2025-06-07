@@ -6,7 +6,7 @@ import { useRouter } from 'next/router';
 import { useEffect } from 'react';
 import { settingsOnSubmit } from '../settingsOnSubmit';
 
-export default function ServerSettingsCore({
+export default function Core({
   swr: { data, isLoading },
 }: {
   swr: { data: Response['/api/server/settings'] | undefined; isLoading: boolean };
@@ -22,6 +22,9 @@ export default function ServerSettingsCore({
       coreDefaultDomain: '',
       coreTempDirectory: '/tmp/zipline',
     },
+    enhanceGetInputProps: (payload) => ({
+      disabled: data?.tampered?.includes(payload.field) || false,
+    }),
   });
 
   const onSubmit = async (values: typeof form.values) => {
@@ -35,10 +38,12 @@ export default function ServerSettingsCore({
   };
 
   useEffect(() => {
+    if (!data) return;
+
     form.setValues({
-      coreReturnHttpsUrls: data?.coreReturnHttpsUrls ?? false,
-      coreDefaultDomain: data?.coreDefaultDomain ?? '',
-      coreTempDirectory: data?.coreTempDirectory ?? '/tmp/zipline',
+      coreReturnHttpsUrls: data.settings.coreReturnHttpsUrls ?? false,
+      coreDefaultDomain: data.settings.coreDefaultDomain ?? '',
+      coreTempDirectory: data.settings.coreTempDirectory ?? '/tmp/zipline',
     });
   }, [data]);
 

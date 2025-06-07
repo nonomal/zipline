@@ -16,7 +16,7 @@ import { useRouter } from 'next/router';
 import { useEffect } from 'react';
 import { settingsOnSubmit } from '../settingsOnSubmit';
 
-export default function ServerSettingsRatelimit({
+export default function Ratelimit({
   swr: { data, isLoading },
 }: {
   swr: { data: Response['/api/server/settings'] | undefined; isLoading: boolean };
@@ -36,6 +36,12 @@ export default function ServerSettingsRatelimit({
       ratelimitAdminBypass: false,
       ratelimitAllowList: '',
     },
+    enhanceGetInputProps: (payload: any): object => ({
+      disabled:
+        data?.tampered?.includes(payload.field) ||
+        (payload.field !== 'ratelimitEnabled' && !form.values.ratelimitEnabled) ||
+        false,
+    }),
   });
 
   const onSubmit = async (values: typeof form.values) => {
@@ -62,11 +68,11 @@ export default function ServerSettingsRatelimit({
     if (!data) return;
 
     form.setValues({
-      ratelimitEnabled: data?.ratelimitEnabled ?? true,
-      ratelimitMax: data?.ratelimitMax ?? 10,
-      ratelimitWindow: data?.ratelimitWindow ?? '',
-      ratelimitAdminBypass: data?.ratelimitAdminBypass ?? false,
-      ratelimitAllowList: data?.ratelimitAllowList.join(', ') ?? '',
+      ratelimitEnabled: data.settings.ratelimitEnabled ?? true,
+      ratelimitMax: data.settings.ratelimitMax ?? 10,
+      ratelimitWindow: data.settings.ratelimitWindow ?? '',
+      ratelimitAdminBypass: data.settings.ratelimitAdminBypass ?? false,
+      ratelimitAllowList: data.settings.ratelimitAllowList.join(', ') ?? '',
     });
   }, [data]);
 
@@ -91,7 +97,6 @@ export default function ServerSettingsRatelimit({
           <Switch
             label='Admin Bypass'
             description='Allow admins to bypass the ratelimit.'
-            disabled={!form.values.ratelimitEnabled}
             {...form.getInputProps('ratelimitAdminBypass', { type: 'checkbox' })}
           />
 
@@ -100,7 +105,6 @@ export default function ServerSettingsRatelimit({
             description='The maximum number of requests allowed within the window. If no window is set, this is the maximum number of requests until it reaches the limit.'
             placeholder='10'
             min={1}
-            disabled={!form.values.ratelimitEnabled}
             {...form.getInputProps('ratelimitMax')}
           />
 
@@ -109,7 +113,6 @@ export default function ServerSettingsRatelimit({
             description='The window in seconds to allow the max requests.'
             placeholder='60'
             min={1}
-            disabled={!form.values.ratelimitEnabled}
             {...form.getInputProps('ratelimitWindow')}
           />
 
@@ -117,7 +120,6 @@ export default function ServerSettingsRatelimit({
             label='Allow List'
             description='A comma-separated list of IP addresses to bypass the ratelimit.'
             placeholder='1.1.1.1, 8.8.8.8'
-            disabled={!form.values.ratelimitEnabled}
             {...form.getInputProps('ratelimitAllowList')}
           />
         </SimpleGrid>

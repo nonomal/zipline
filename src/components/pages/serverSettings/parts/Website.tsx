@@ -17,7 +17,7 @@ const defaultExternalLinks = [
   },
 ];
 
-export default function ServerSettingsWebsite({
+export default function Website({
   swr: { data, isLoading },
 }: {
   swr: { data: Response['/api/server/settings'] | undefined; isLoading: boolean };
@@ -37,6 +37,9 @@ export default function ServerSettingsWebsite({
       websiteThemeDark: 'builtin:dark_gray',
       websiteThemeLight: 'builtin:light_gray',
     },
+    enhanceGetInputProps: (payload) => ({
+      disabled: data?.tampered?.includes(payload.field) || false,
+    }),
   });
 
   const onSubmit = async (values: typeof form.values) => {
@@ -76,16 +79,20 @@ export default function ServerSettingsWebsite({
     if (!data) return;
 
     form.setValues({
-      websiteTitle: data?.websiteTitle ?? 'Zipline',
-      websiteTitleLogo: data?.websiteTitleLogo ?? '',
-      websiteExternalLinks: JSON.stringify(data?.websiteExternalLinks ?? defaultExternalLinks, null, 2),
-      websiteLoginBackground: data?.websiteLoginBackground ?? '',
-      websiteLoginBackgroundBlur: data?.websiteLoginBackgroundBlur ?? true,
-      websiteDefaultAvatar: data?.websiteDefaultAvatar ?? '',
-      websiteTos: data?.websiteTos ?? '',
-      websiteThemeDefault: data?.websiteThemeDefault ?? 'system',
-      websiteThemeDark: data?.websiteThemeDark ?? 'builtin:dark_gray',
-      websiteThemeLight: data?.websiteThemeLight ?? 'builtin:light_gray',
+      websiteTitle: data.settings.websiteTitle ?? 'Zipline',
+      websiteTitleLogo: data.settings.websiteTitleLogo ?? '',
+      websiteExternalLinks: JSON.stringify(
+        data.settings.websiteExternalLinks ?? defaultExternalLinks,
+        null,
+        2,
+      ),
+      websiteLoginBackground: data.settings.websiteLoginBackground ?? '',
+      websiteLoginBackgroundBlur: data.settings.websiteLoginBackgroundBlur ?? true,
+      websiteDefaultAvatar: data.settings.websiteDefaultAvatar ?? '',
+      websiteTos: data.settings.websiteTos ?? '',
+      websiteThemeDefault: data.settings.websiteThemeDefault ?? 'system',
+      websiteThemeDark: data.settings.websiteThemeDark ?? 'builtin:dark_gray',
+      websiteThemeLight: data.settings.websiteThemeLight ?? 'builtin:light_gray',
     });
   }, [data]);
 
@@ -176,7 +183,6 @@ export default function ServerSettingsWebsite({
               label='Dark Theme'
               description='The dark theme to use for the website when the default theme is "system".'
               placeholder='builtin:dark_gray'
-              disabled={form.values.websiteThemeDefault !== 'system'}
               {...form.getInputProps('websiteThemeDark')}
             />
           </Grid.Col>
@@ -186,7 +192,6 @@ export default function ServerSettingsWebsite({
               label='Light Theme'
               description='The light theme to use for the website when the default theme is "system".'
               placeholder='builtin:light_gray'
-              disabled={form.values.websiteThemeDefault !== 'system'}
               {...form.getInputProps('websiteThemeLight')}
             />
           </Grid.Col>

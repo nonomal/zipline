@@ -16,7 +16,7 @@ import { useRouter } from 'next/router';
 import { useEffect } from 'react';
 import { settingsOnSubmit } from '../settingsOnSubmit';
 
-export default function ServerSettingsOauth({
+export default function Oauth({
   swr: { data, isLoading },
 }: {
   swr: { data: Response['/api/server/settings'] | undefined; isLoading: boolean };
@@ -47,6 +47,9 @@ export default function ServerSettingsOauth({
       oauthOidcUserinfoUrl: '',
       oauthOidcRedirectUri: '',
     },
+    enhanceGetInputProps: (payload) => ({
+      disabled: data?.tampered?.includes(payload.field) || false,
+    }),
   });
 
   const onSubmit = async (values: typeof form.values) => {
@@ -81,30 +84,30 @@ export default function ServerSettingsOauth({
     if (!data) return;
 
     form.setValues({
-      oauthBypassLocalLogin: data?.oauthBypassLocalLogin ?? false,
-      oauthLoginOnly: data?.oauthLoginOnly ?? false,
+      oauthBypassLocalLogin: data.settings.oauthBypassLocalLogin ?? false,
+      oauthLoginOnly: data.settings.oauthLoginOnly ?? false,
 
-      oauthDiscordClientId: data?.oauthDiscordClientId ?? '',
-      oauthDiscordClientSecret: data?.oauthDiscordClientSecret ?? '',
-      oauthDiscordRedirectUri: data?.oauthDiscordRedirectUri ?? '',
-      oauthDiscordWhitelistIds: data?.oauthDiscordWhitelistIds
-        ? data?.oauthDiscordWhitelistIds.join(', ')
+      oauthDiscordClientId: data.settings.oauthDiscordClientId ?? '',
+      oauthDiscordClientSecret: data.settings.oauthDiscordClientSecret ?? '',
+      oauthDiscordRedirectUri: data.settings.oauthDiscordRedirectUri ?? '',
+      oauthDiscordWhitelistIds: data.settings.oauthDiscordWhitelistIds
+        ? data.settings.oauthDiscordWhitelistIds.join(', ')
         : '',
 
-      oauthGoogleClientId: data?.oauthGoogleClientId ?? '',
-      oauthGoogleClientSecret: data?.oauthGoogleClientSecret ?? '',
-      oauthGoogleRedirectUri: data?.oauthGoogleRedirectUri ?? '',
+      oauthGoogleClientId: data.settings.oauthGoogleClientId ?? '',
+      oauthGoogleClientSecret: data.settings.oauthGoogleClientSecret ?? '',
+      oauthGoogleRedirectUri: data.settings.oauthGoogleRedirectUri ?? '',
 
-      oauthGithubClientId: data?.oauthGithubClientId ?? '',
-      oauthGithubClientSecret: data?.oauthGithubClientSecret ?? '',
-      oauthGithubRedirectUri: data?.oauthGithubRedirectUri ?? '',
+      oauthGithubClientId: data.settings.oauthGithubClientId ?? '',
+      oauthGithubClientSecret: data.settings.oauthGithubClientSecret ?? '',
+      oauthGithubRedirectUri: data.settings.oauthGithubRedirectUri ?? '',
 
-      oauthOidcClientId: data?.oauthOidcClientId ?? '',
-      oauthOidcClientSecret: data?.oauthOidcClientSecret ?? '',
-      oauthOidcAuthorizeUrl: data?.oauthOidcAuthorizeUrl ?? '',
-      oauthOidcTokenUrl: data?.oauthOidcTokenUrl ?? '',
-      oauthOidcUserinfoUrl: data?.oauthOidcUserinfoUrl ?? '',
-      oauthOidcRedirectUri: data?.oauthOidcRedirectUri ?? '',
+      oauthOidcClientId: data.settings.oauthOidcClientId ?? '',
+      oauthOidcClientSecret: data.settings.oauthOidcClientSecret ?? '',
+      oauthOidcAuthorizeUrl: data.settings.oauthOidcAuthorizeUrl ?? '',
+      oauthOidcTokenUrl: data.settings.oauthOidcTokenUrl ?? '',
+      oauthOidcUserinfoUrl: data.settings.oauthOidcUserinfoUrl ?? '',
+      oauthOidcRedirectUri: data.settings.oauthOidcRedirectUri ?? '',
     });
   }, [data]);
 

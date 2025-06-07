@@ -6,7 +6,7 @@ import { useRouter } from 'next/router';
 import { useEffect } from 'react';
 import { settingsOnSubmit } from '../settingsOnSubmit';
 
-export default function ServerSettingsUrls({
+export default function Urls({
   swr: { data, isLoading },
 }: {
   swr: { data: Response['/api/server/settings'] | undefined; isLoading: boolean };
@@ -17,6 +17,9 @@ export default function ServerSettingsUrls({
       urlsRoute: '/go',
       urlsLength: 6,
     },
+    enhanceGetInputProps: (payload) => ({
+      disabled: data?.tampered?.includes(payload.field) || false,
+    }),
   });
 
   const onSubmit = settingsOnSubmit(router, form);
@@ -25,8 +28,8 @@ export default function ServerSettingsUrls({
     if (!data) return;
 
     form.setValues({
-      urlsRoute: data?.urlsRoute ?? '/go',
-      urlsLength: data?.urlsLength ?? 6,
+      urlsRoute: data.settings.urlsRoute ?? '/go',
+      urlsLength: data.settings.urlsLength ?? 6,
     });
   }, [data]);
 

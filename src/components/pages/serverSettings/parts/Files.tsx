@@ -16,7 +16,7 @@ import { useRouter } from 'next/router';
 import { useEffect } from 'react';
 import { settingsOnSubmit } from '../settingsOnSubmit';
 
-export default function ServerSettingsFiles({
+export default function Files({
   swr: { data, isLoading },
 }: {
   swr: { data: Response['/api/server/settings'] | undefined; isLoading: boolean };
@@ -48,6 +48,9 @@ export default function ServerSettingsFiles({
       filesRandomWordsNumAdjectives: 3,
       filesRandomWordsSeparator: '-',
     },
+    enhanceGetInputProps: (payload) => ({
+      disabled: data?.tampered?.includes(payload.field) || false,
+    }),
   });
 
   const onSubmit = async (values: typeof form.values) => {
@@ -80,18 +83,20 @@ export default function ServerSettingsFiles({
   };
 
   useEffect(() => {
+    if (!data) return;
+
     form.setValues({
-      filesRoute: data?.filesRoute ?? '/u',
-      filesLength: data?.filesLength ?? 6,
-      filesDefaultFormat: data?.filesDefaultFormat ?? 'random',
-      filesDisabledExtensions: data?.filesDisabledExtensions.join(', ') ?? '',
-      filesMaxFileSize: data?.filesMaxFileSize ?? '100mb',
-      filesDefaultExpiration: data?.filesDefaultExpiration ?? '',
-      filesAssumeMimetypes: data?.filesAssumeMimetypes ?? false,
-      filesDefaultDateFormat: data?.filesDefaultDateFormat ?? 'YYYY-MM-DD_HH:mm:ss',
-      filesRemoveGpsMetadata: data?.filesRemoveGpsMetadata ?? false,
-      filesRandomWordsNumAdjectives: data?.filesRandomWordsNumAdjectives ?? 3,
-      filesRandomWordsSeparator: data?.filesRandomWordsSeparator ?? '-',
+      filesRoute: data.settings.filesRoute ?? '/u',
+      filesLength: data.settings.filesLength ?? 6,
+      filesDefaultFormat: data.settings.filesDefaultFormat ?? 'random',
+      filesDisabledExtensions: data.settings.filesDisabledExtensions.join(', ') ?? '',
+      filesMaxFileSize: data.settings.filesMaxFileSize ?? '100mb',
+      filesDefaultExpiration: data.settings.filesDefaultExpiration ?? '',
+      filesAssumeMimetypes: data.settings.filesAssumeMimetypes ?? false,
+      filesDefaultDateFormat: data.settings.filesDefaultDateFormat ?? 'YYYY-MM-DD_HH:mm:ss',
+      filesRemoveGpsMetadata: data.settings.filesRemoveGpsMetadata ?? false,
+      filesRandomWordsNumAdjectives: data.settings.filesRandomWordsNumAdjectives ?? 3,
+      filesRandomWordsSeparator: data.settings.filesRandomWordsSeparator ?? '-',
     });
   }, [data]);
 
