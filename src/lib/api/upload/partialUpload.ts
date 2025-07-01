@@ -127,6 +127,10 @@ export async function handlePartialUpload({
       },
     });
 
+    const responseUrl = `${domain}${
+      config.files.route === '/' || config.files.route === '' ? '' : `${config.files.route}`
+    }/${fileUpload.name}`;
+
     new Worker('./build/offload/partial.js', {
       workerData: {
         user: {
@@ -139,14 +143,14 @@ export async function handlePartialUpload({
         },
         options,
         domain,
-        responseUrl: `${domain}/${encodeURIComponent(fileUpload.name)}`,
+        responseUrl,
       },
     });
 
     response.files.push({
       id: fileUpload.id,
       type: fileUpload.type,
-      url: `${domain}/${encodeURIComponent(fileUpload.name)}`,
+      url: responseUrl,
       pending: true,
     });
 

@@ -218,6 +218,10 @@ export async function uploadPartialFiles(
                   >
                     Click here to copy the URL to clipboard while it&apos;s being processed.
                   </Anchor>
+                  <br />
+                  <Anchor component={Link} href='/dashboard/files?popen=true'>
+                    View processing files
+                  </Anchor>
                 </Text>
               ),
               color: 'green',
