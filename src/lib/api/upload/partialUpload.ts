@@ -131,7 +131,7 @@ export async function handlePartialUpload({
       config.files.route === '/' || config.files.route === '' ? '' : `${config.files.route}`
     }/${fileUpload.name}`;
 
-    new Worker('./build/offload/partial.js', {
+    const worker = new Worker('./build/offload/partial.js', {
       workerData: {
         user: {
           id: req.user ? req.user.id : options.folder ? folder?.userId : undefined,
@@ -145,6 +145,36 @@ export async function handlePartialUpload({
         domain,
         responseUrl,
       },
+    });
+
+    worker.on('message', async (msg) => {
+      if (msg.type === 'query') {
+        let result;
+
+        switch (msg.query) {
+          case 'incompleteFile.create':
+            result = await prisma.incompleteFile.create(msg.data);
+            break;
+          case 'incompleteFile.update':
+            result = await prisma.incompleteFile.update(msg.data);
+            break;
+          case 'file.update':
+            result = await prisma.file.update(msg.data);
+            break;
+          case 'user.findUnique':
+            result = await prisma.user.findUnique(msg.data);
+            break;
+          default:
+            console.error(`Unknown query type: ${msg.query}`);
+            result = null;
+        }
+
+        worker.postMessage({
+          type: 'response',
+          id: msg.id,
+          result: JSON.stringify(result),
+        });
+      }
     });
 
     response.files.push({
