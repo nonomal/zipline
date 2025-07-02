@@ -295,6 +295,11 @@ export default fastifyPlugin(
             pwaDescription: z.string(),
             pwaThemeColor: z.string().regex(/^#?([a-f0-9]{6}|[a-f0-9]{3})$/),
             pwaBackgroundColor: z.string().regex(/^#?([a-f0-9]{6}|[a-f0-9]{3})/),
+
+            domains: z.union([
+              z.array(z.string()),
+              z.string().transform((value) => value.split(',').map((s) => s.trim())),
+            ]),
           })
           .partial()
           .refine(

@@ -62,8 +62,19 @@ export default function UploadOptionsButton({ folder, numFiles }: { folder?: str
   const { data: folders } = useSWR<Extract<Response['/api/user/folders'], Folder[]>>(
     '/api/user/folders?noincl=true',
   );
+  const { data: settingsData } = useSWR<Response['/api/server/settings']>('/api/server/settings');
+
   const combobox = useCombobox();
   const [folderSearch, setFolderSearch] = useState('');
+
+  const domains = Array.isArray(settingsData?.settings.domains) ? settingsData.settings.domains : [];
+  const domainOptions = [
+    { value: '', label: 'Default Domain' },
+    ...domains.map((domain) => ({
+      value: domain,
+      label: domain,
+    })),
+  ];
 
   useEffect(() => {
     if (folder) return;
@@ -264,9 +275,7 @@ export default function UploadOptionsButton({ folder, numFiles }: { folder?: str
 
             <Combobox.Dropdown>
               <Combobox.Options>
-                <Combobox.Option defaultChecked={true} value='no folder'>
-                  No Folder
-                </Combobox.Option>
+                <Combobox.Option value='no folder'>No Folder</Combobox.Option>
 
                 {folders
                   ?.filter((f) => f.name.toLowerCase().includes(folderSearch.toLowerCase().trim()))
@@ -279,7 +288,8 @@ export default function UploadOptionsButton({ folder, numFiles }: { folder?: str
             </Combobox.Dropdown>
           </Combobox>
 
-          <TextInput
+          <Select
+            data={domainOptions}
             label={
               <>
                 Override Domain{' '}
@@ -293,12 +303,15 @@ export default function UploadOptionsButton({ folder, numFiles }: { folder?: str
             description='Override the domain with this value. This will change the domain returned in your uploads. Leave blank to use the default domain.'
             leftSection={<IconGlobe size='1rem' />}
             value={options.overrides_returnDomain ?? ''}
-            onChange={(event) =>
-              setOption(
-                'overrides_returnDomain',
-                event.currentTarget.value.trim() === '' ? null : event.currentTarget.value.trim(),
-              )
-            }
+            onChange={(value) => setOption('overrides_returnDomain', value || null)}
+            comboboxProps={{
+              withinPortal: true,
+              portalProps: {
+                style: {
+                  zIndex: 100000000,
+                },
+              },
+            }}
           />
 
           <TextInput

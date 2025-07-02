@@ -11,7 +11,6 @@ import {
   Stack,
   Switch,
   Text,
-  TextInput,
 } from '@mantine/core';
 import { IconDownload, IconEyeFilled, IconGlobe, IconPercentage, IconWriting } from '@tabler/icons-react';
 import Link from 'next/link';
@@ -105,9 +104,21 @@ export default function GeneratorButton({
   );
 
   const { data: tokenData, isLoading, error } = useSWR<Response['/api/user/token']>('/api/user/token');
+  const { data: settingsData } = useSWR<Response['/api/server/settings']>('/api/server/settings');
 
   const isUnixLike = name === 'Flameshot' || name === 'Shell Script';
   const onlyFile = generatorType === 'file';
+
+  const domains = Array.isArray(settingsData?.settings.domains)
+    ? settingsData?.settings.domains.map((d) => String(d))
+    : [];
+  const domainOptions = [
+    { value: '', label: 'Default Domain' },
+    ...domains.map((domain) => ({
+      value: domain,
+      label: domain,
+    })),
+  ] as { value: string; label: string; disabled?: boolean }[];
 
   return (
     <>
@@ -187,14 +198,21 @@ export default function GeneratorButton({
             onChange={(value) => setOption({ maxViews: value === '' ? null : Number(value) })}
           />
 
-          <TextInput
+          <Select
+            data={domainOptions}
             label='Override Domain'
             description='Override the domain with this value. This will change the domain returned in your uploads. Leave blank to use the default domain.'
             leftSection={<IconGlobe size='1rem' />}
             value={options.overrides_returnDomain ?? ''}
-            onChange={(event) =>
-              setOption({ overrides_returnDomain: event.currentTarget.value.trim() || null })
-            }
+            onChange={(value) => setOption({ overrides_returnDomain: value || null })}
+            comboboxProps={{
+              withinPortal: true,
+              portalProps: {
+                style: {
+                  zIndex: 100000000,
+                },
+              },
+            }}
           />
 
           <Text c='dimmed' size='sm'>
