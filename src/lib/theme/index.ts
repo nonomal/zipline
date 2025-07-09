@@ -41,10 +41,12 @@ const variantColorResolver: VariantColorsResolver = (input) => {
 };
 
 export function themeComponents(theme: ZiplineTheme): MantineThemeOverride {
+  const { components, ...rest } = theme;
   return {
-    ...theme,
+    ...rest,
     variantColorResolver: variantColorResolver,
     components: {
+      ...components,
       AppShell: AppShell.extend({
         styles: {
           main: {
