@@ -48,3 +48,6 @@ uploads*/
 *.crt
 *.key
 generated
+
+# nix dev env
+/.psql_db/

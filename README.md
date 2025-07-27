@@ -198,6 +198,24 @@ Create a pull request on GitHub. If your PR does not pass the action checks, the
 
 Here's how to setup Zipline for development
 
+#### Nix
+
+If you have [Nix](https://nixos.org/) installed, you can use the provided dev shell to get started quickly. Just run:
+
+```bash
+nix develop
+```
+
+This will start a postgres server, and drop you into a shell with the necessary tools installed:
+
+- nodejs
+- corepack
+- git
+- ffmpeg
+- postgres server
+
+After hopping into the dev shell, you can follow the instructions below (skipping the prerequisites) to setup a configuration and start the server.
+
 #### Prerequisites
 
 - nodejs (lts -> 20.x, 22.x)
