@@ -15,6 +15,7 @@ import { open, readdir, rm } from 'fs/promises';
 import { join } from 'path';
 import { isMainThread, workerData } from 'worker_threads';
 import { dbProxy } from './proxiedDb';
+import { Config } from '@/lib/config/validate';
 
 export type PartialWorkerData = {
   user: {
@@ -47,6 +48,8 @@ if (!options.partial.lastchunk) {
   logger.error('no last chunk provided');
   process.exit(1);
 }
+
+let finalPath: string | undefined;
 
 main();
 
@@ -88,7 +91,7 @@ async function main() {
     },
   });
 
-  const finalPath =
+  finalPath =
     config.datasource.type === 'local'
       ? join(config.datasource.local!.directory, file.filename)
       : join(config.core.tempDirectory, randomCharacters(16));
@@ -104,7 +107,7 @@ async function main() {
     try {
       await new Promise<void>((resolve, reject) => {
         const readStream = createReadStream(chunkPath);
-        const writeStream = createWriteStream(finalPath, { start: chunk.start, flags: 'r+' });
+        const writeStream = createWriteStream(finalPath!, { start: chunk.start, flags: 'r+' });
 
         readStream.pipe(writeStream);
 
@@ -133,7 +136,7 @@ async function main() {
     } catch (e) {
       logger.error('error while combining chunks');
       console.error(e);
-      await failPartial(incompleteFile);
+      await failPartial(config, incompleteFile);
 
       process.exit(1);
     }
@@ -165,7 +168,7 @@ async function main() {
     } catch (e) {
       logger.error('error while uploading multipart file');
       console.error(e);
-      await failPartial(incompleteFile);
+      await failPartial(config, incompleteFile);
 
       process.exit(1);
     }
@@ -206,7 +209,10 @@ async function runComplete(id: string) {
     select: fileSelect,
   });
 
-  logger.info(`${userr.username} uploaded ${fileUpload.name}`, { size: bytes(fileUpload.size) });
+  logger.info(`${userr.username} uploaded ${fileUpload.name}`, {
+    size: bytes(fileUpload.size),
+    partial: true,
+  });
 
   await onUpload({
     user: userr,
@@ -218,8 +224,19 @@ async function runComplete(id: string) {
   });
 }
 
-function failPartial(incompleteFile: IncompleteFile) {
+async function failPartial(config: Config, incompleteFile: IncompleteFile) {
   logger.error('failing incomplete file', { id: incompleteFile.id });
+
+  const partials = await readdir(config.core.tempDirectory).then((files) =>
+    files.filter((file) => file.startsWith(`zipline_partial_${options.partial!.identifier}`)),
+  );
+  await Promise.all(partials.map((file) => rm(join(config.core.tempDirectory, file)).catch(() => {})));
+  if (finalPath) {
+    try {
+      await rm(finalPath);
+    } catch {}
+  }
+
   return dbProxy('incompleteFile.update', {
     where: {
       id: incompleteFile.id,

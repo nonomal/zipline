@@ -1,3 +1,4 @@
+import { Prisma } from '@/client';
 import { bytes } from '@/lib/bytes';
 import { compressFile } from '@/lib/compress';
 import { config } from '@/lib/config';
@@ -43,6 +44,8 @@ export type ApiUploadResponse = {
     type: string;
     url: string;
     pending?: boolean;
+    removedGps?: boolean;
+    compressed?: boolean;
   }[];
 
   deletesAt?: string;
@@ -64,8 +67,9 @@ export default fastifyPlugin(
       const options = parseHeaders(req.headers, config.files);
       if (options.header) return res.badRequest('bad options, receieved: ' + JSON.stringify(options));
 
+      let folder = null;
       if (options.folder) {
-        const folder = await prisma.folder.findFirst({
+        folder = await prisma.folder.findFirst({
           where: {
             id: options.folder,
           },
@@ -128,8 +132,6 @@ export default fastifyPlugin(
         domain = `${config.core.returnHttpsUrls ? 'https' : 'http'}://${req.headers.host}`;
       }
 
-      console.log(files);
-
       logger.debug('uploading files', { files: files.map((x) => x.filename) });
 
       for (let i = 0; i !== files.length; ++i) {
@@ -137,27 +139,21 @@ export default fastifyPlugin(
         const extension = getExtension(file.filename, options.overrides?.extension);
 
         if (config.files.disabledExtensions.includes(extension))
-          return res.badRequest(`File extension ${extension} is not allowed`);
-
+          return res.badRequest(`file[${i}]: File extension ${extension} is not allowed`);
         if (file.file.bytesRead > bytes(config.files.maxFileSize))
           return res.payloadTooLarge(
-            `File size is too large. Maximum file size is ${bytes(config.files.maxFileSize)} bytes`,
+            `file[${i}]: File size is too large. Maximum file size is ${bytes(config.files.maxFileSize)} bytes`,
           );
 
         // determine filename
         const format = options.format || config.files.defaultFormat;
         let fileName = formatFileName(format, file.filename);
-
         if (options.overrides?.filename || format === 'name') {
           if (options.overrides?.filename) fileName = decodeURIComponent(options.overrides!.filename!);
           const fullFileName = `${fileName}${extension}`;
-
-          const existing = await prisma.file.findFirst({
-            where: {
-              name: fullFileName,
-            },
-          });
-          if (existing) return res.badRequest(`A file with the name "${fullFileName}" already exists`);
+          const existing = await prisma.file.findFirst({ where: { name: fullFileName } });
+          if (existing)
+            return res.badRequest(`file[${i}]: A file with the name "${fullFileName}" already exists`);
         }
 
         // determine mimetype
@@ -165,33 +161,15 @@ export default fastifyPlugin(
         if (mimetype === 'application/octet-stream' && config.files.assumeMimetypes) {
           const mime = await guess(extension.substring(1));
 
-          if (!mime) response.assumedMimetypes![i] = false;
-          else {
-            response.assumedMimetypes![i] = true;
-            mimetype = mime;
-          }
-        }
-
-        // determine folder
-        let folder = null;
-        if (options.folder) {
-          folder = await prisma.folder.findFirst({
-            where: {
-              id: options.folder,
-            },
-          });
-
-          if (!folder) return res.badRequest('Folder does not exist');
-          if (!req.user && !folder.allowUploads) return res.forbidden('Folder is not open');
+          response.assumedMimetypes![i] = !!mime;
+          if (mime) mimetype = mime;
         }
 
         // compress the image if requested
         let compressed = false;
         if (mimetype.startsWith('image/') && options.imageCompressionPercent) {
           await compressFile(file.filepath, options.imageCompressionPercent);
-
           logger.c('jpg').debug(`compressed file ${file.filename}`);
-
           compressed = true;
         }
 
@@ -199,62 +177,46 @@ export default fastifyPlugin(
         let removedGps = false;
         if (mimetype.startsWith('image/') && config.files.removeGpsMetadata) {
           const removed = removeGps(file.filepath);
+          if (removed) logger.c('gps').debug(`removed gps metadata from ${file.filename}`);
 
-          if (removed) {
-            logger.c('gps').debug(`removed gps metadata from ${file.filename}`, {
-              nsize: bytes(file.file.bytesRead),
-            });
-          }
-
-          removedGps = true;
+          removedGps = removed;
         }
 
         const tempFileStats = await stat(file.filepath);
 
+        const data: Prisma.FileCreateInput = {
+          name: `${fileName}${compressed ? '.jpg' : extension}`,
+          size: tempFileStats.size,
+          type: compressed ? 'image/jpeg' : mimetype,
+          User: { connect: { id: req.user ? req.user.id : options.folder ? folder?.userId : undefined } },
+        };
+
+        if (options.maxViews) data.maxViews = options.maxViews;
+        if (options.password) data.password = await hashPassword(options.password);
+        if (folder) data.Folder = { connect: { id: folder.id } };
+        if (options.addOriginalName) data.originalName = file.filename;
+        data.deletesAt = options.deletesAt && options.deletesAt !== 'never' ? options.deletesAt : null;
+
         const fileUpload = await prisma.file.create({
-          data: {
-            name: `${fileName}${compressed ? '.jpg' : extension}`,
-            size: tempFileStats.size,
-            type: compressed ? 'image/jpeg' : mimetype,
-            User: {
-              connect: {
-                id: req.user ? req.user.id : options.folder ? folder?.userId : undefined,
-              },
-            },
-            ...(options.maxViews && { maxViews: options.maxViews }),
-            ...(options.password && { password: await hashPassword(options.password) }),
-            ...(options.deletesAt && options.deletesAt !== 'never'
-              ? { deletesAt: options.deletesAt }
-              : { deletesAt: null }),
-            ...(options.folder && { Folder: { connect: { id: options.folder } } }),
-            ...(options.addOriginalName && { originalName: file.filename }),
-          },
+          data,
           select: fileSelect,
         });
 
-        await datasource.put(fileUpload.name, file.filepath, {
-          mimetype: fileUpload.type,
-        });
+        await datasource.put(fileUpload.name, file.filepath, { mimetype: fileUpload.type });
 
-        const responseUrl = `${domain}${
-          config.files.route === '/' || config.files.route === '' ? '' : `${config.files.route}`
-        }/${fileUpload.name}`;
+        const responseUrl = `${domain}${config.files.route === '/' || config.files.route === '' ? '' : `${config.files.route}`}/${fileUpload.name}`;
 
         response.files.push({
           id: fileUpload.id,
           type: fileUpload.type,
           url: encodeURI(responseUrl),
-
-          ...(removedGps && { removedGps: true }),
-          ...(compressed && { compressed: true }),
+          removedGps: removedGps || undefined,
+          compressed: compressed || undefined,
         });
 
         logger.info(
           `${req.user ? req.user.username : '[anonymous folder upload]'} uploaded ${fileUpload.name}`,
-          {
-            size: bytes(fileUpload.size),
-            ip: req.ip,
-          },
+          { size: bytes(fileUpload.size), ip: req.ip },
         );
 
         await onUpload({

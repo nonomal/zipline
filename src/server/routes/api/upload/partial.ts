@@ -13,6 +13,7 @@ import { readdir, rename, rm } from 'fs/promises';
 import { join } from 'path';
 import { Worker } from 'worker_threads';
 import { ApiUploadResponse, getExtension } from '.';
+import { Prisma } from '@/client';
 
 const logger = log('api').c('upload').c('partial');
 
@@ -39,8 +40,9 @@ export default fastifyPlugin(
       if (!options.partial.range || options.partial.range.length !== 3)
         return res.badRequest('Invalid partial upload');
 
+      let folder = null;
       if (options.folder) {
-        const folder = await prisma.folder.findFirst({
+        folder = await prisma.folder.findFirst({
           where: {
             id: options.folder,
           },
@@ -103,7 +105,7 @@ export default fastifyPlugin(
         domain = `${config.core.returnHttpsUrls ? 'https' : 'http'}://${req.headers.host}`;
       }
 
-      logger.debug('saving partial files', { files: files.map((x) => x.filename) });
+      logger.debug('saving partial files', { partial: options.partial, files: files.map((x) => x.filename) });
 
       if (files.length > 1) return res.badRequest('partial uploads only support one file field');
       const file = files[0];
@@ -178,36 +180,27 @@ export default fastifyPlugin(
           }
         }
 
-        // determine folder
-        let folder = null;
-        if (options.folder) {
-          folder = await prisma.folder.findFirst({
-            where: {
-              id: options.folder,
+        const data: Prisma.FileCreateInput = {
+          name: `${fileName}${extension}`,
+          size: 0,
+          type: mimetype,
+          User: {
+            connect: {
+              id: req.user ? req.user.id : options.folder ? folder?.userId : undefined,
             },
-          });
-          if (!folder) return res.badRequest('folder not found');
-          if (!req.user && !folder.allowUploads) return res.forbidden('folder is not open');
-        }
+          },
+        };
+
+        if (options.password) data.password = await hashPassword(options.password);
+        if (options.maxViews) data.maxViews = options.maxViews;
+        if (folder) data.Folder = { connect: { id: folder.id } };
+        if (options.addOriginalName)
+          data.originalName = options.partial.filename
+            ? decodeURIComponent(options.partial.filename)
+            : file.filename; // this will prolly be "blob" but should hopefully never happen
 
         const fileUpload = await prisma.file.create({
-          data: {
-            name: `${fileName}${extension}`,
-            size: 0,
-            type: mimetype,
-            User: {
-              connect: {
-                id: req.user ? req.user.id : options.folder ? folder?.userId : undefined,
-              },
-            },
-            ...(options.password && { password: await hashPassword(options.password) }),
-            ...(options.folder && { Folder: { connect: { id: options.folder } } }),
-            ...(options.addOriginalName && {
-              originalName: options.partial.filename
-                ? decodeURIComponent(options.partial.filename)
-                : file.filename /* this will prolly be "blob" but should hopefully never happen */,
-            }),
-          },
+          data,
         });
 
         const responseUrl = `${domain}${
