@@ -2,7 +2,6 @@ import unusedImports from 'eslint-plugin-unused-imports';
 import tseslint from 'typescript-eslint';
 import prettier from 'eslint-plugin-prettier';
 import prettierConfig from 'eslint-config-prettier';
-import nextConfig from '@next/eslint-plugin-next';
 import reactHooksPlugin from 'eslint-plugin-react-hooks';
 import reactPlugin from 'eslint-plugin-react';
 import jsxA11yPlugin from 'eslint-plugin-jsx-a11y';
@@ -39,7 +38,6 @@ export default tseslint.config(
     plugins: {
       'unused-imports': unusedImports,
       prettier: prettier,
-      '@next/next': nextConfig,
       'react-hooks': reactHooksPlugin,
       react: reactPlugin,
       'jsx-a11y': jsxA11yPlugin,
@@ -48,9 +46,6 @@ export default tseslint.config(
       ...reactPlugin.configs.recommended.rules,
 
       ...reactHooksPlugin.configs.recommended.rules,
-
-      ...nextConfig.configs.recommended.rules,
-      ...nextConfig.configs['core-web-vitals'].rules,
 
       ...prettierConfig.rules,
       'prettier/prettier': [
@@ -109,9 +104,6 @@ export default tseslint.config(
     settings: {
       react: {
         version: 'detect',
-      },
-      next: {
-        rootDir: __dirname,
       },
     },
   },

@@ -15,7 +15,7 @@ export default fastifyPlugin(
   (server, _, done) => {
     server.get(PATH, async (req, res) => {
       const parsedUrl = parse(req.url!, true);
-      if (!config.features.healthcheck) return req.server.nextServer.render404(req.raw, res.raw, parsedUrl);
+      if (!config.features.healthcheck) return res.notFound();
 
       try {
         await prisma.$queryRaw`SELECT 1;`;

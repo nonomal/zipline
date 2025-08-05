@@ -7,7 +7,7 @@ import { useState } from 'react';
 import { deleteUser } from './actions';
 import RelativeDate from '@/components/RelativeDate';
 import { canInteract, isAdministrator, roleName } from '@/lib/role';
-import Link from 'next/link';
+import { Link } from 'react-router-dom';
 
 export default function UserCard({ user }: { user: User }) {
   const currentUser = useUserStore((state) => state.user);
@@ -43,7 +43,7 @@ export default function UserCard({ user }: { user: User }) {
               <ActionIcon
                 variant={canInteract(currentUser?.role, user?.role) ? 'subtle' : 'transparent'}
                 component={Link}
-                href={`/dashboard/admin/users/${user.id}/files`}
+                to={`/dashboard/admin/users/${user.id}/files`}
                 disabled={!canInteract(currentUser?.role, user?.role)}
               >
                 <IconFiles size='1rem' />

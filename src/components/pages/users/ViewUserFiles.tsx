@@ -4,8 +4,8 @@ import { useViewStore } from '@/lib/store/view';
 import { ActionIcon, Group, Title, Tooltip } from '@mantine/core';
 import FileTable from '../files/views/FileTable';
 import Files from '../files/views/Files';
-import Link from 'next/link';
 import { IconArrowBackUp } from '@tabler/icons-react';
+import { Link } from 'react-router-dom';
 
 export default function ViewFiles({ user }: { user: User }) {
   if (!user) return null;
@@ -17,7 +17,7 @@ export default function ViewFiles({ user }: { user: User }) {
       <Group>
         <Title>{user.username}&apos;s files</Title>
         <Tooltip label='Back to users'>
-          <ActionIcon variant='outline' component={Link} href='/dashboard/admin/users'>
+          <ActionIcon variant='outline' component={Link} to='/dashboard/admin/users'>
             <IconArrowBackUp size='1rem' />
           </ActionIcon>
         </Tooltip>

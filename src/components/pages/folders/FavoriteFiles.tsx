@@ -12,9 +12,9 @@ import {
   Title,
 } from '@mantine/core';
 import { IconFileUpload, IconFilesOff } from '@tabler/icons-react';
-import Link from 'next/link';
 import { parseAsInteger, useQueryState } from 'nuqs';
 import { useApiPagination } from '../files/useApiPagination';
+import { Link } from 'react-router-dom';
 
 export default function FavoriteFiles() {
   const [page, setPage] = useQueryState('fpage', parseAsInteger.withDefault(1));
@@ -61,7 +61,7 @@ export default function FavoriteFiles() {
                           size='compact-sm'
                           leftSection={<IconFileUpload size='1rem' />}
                           component={Link}
-                          href='/dashboard/upload/file'
+                          to='/dashboard/upload/file'
                         >
                           Upload a file
                         </Button>

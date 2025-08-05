@@ -22,10 +22,8 @@ import fastify from 'fastify';
 import { mkdir, readFile } from 'fs/promises';
 import ms, { StringValue } from 'ms';
 import querystring from 'querystring';
-import { parse } from 'url';
 import { version } from '../../package.json';
 import { checkRateLimit } from './plugins/checkRateLimit';
-import next, { ALL_METHODS } from './plugins/next';
 import oauthPlugin from './plugins/oauth';
 import loadRoutes from './routes';
 import { filesRoute } from './routes/files.dy';
@@ -97,6 +95,8 @@ async function main() {
     root: config.core.tempDirectory,
   });
 
+  // todo serve vite
+
   await server.register(oauthPlugin);
 
   if (config.ratelimit.enabled) {
@@ -139,10 +139,10 @@ async function main() {
 
     server.get<{ Params: { id: string } }>('/:id', async (req, res) => {
       const { id } = req.params;
-      const parsedUrl = parse(req.url!, true);
+      // const parsedUrl = parse(req.url!, true);
 
-      if (id === '') return server.nextServer.render404(req.raw, res.raw, parsedUrl);
-      else if (id === 'dashboard') return server.nextServer.render(req.raw, res.raw, '/dashboard');
+      // if (id === '') return server.nextServer.render404(req.raw, res.raw, parsedUrl);
+      // else if (id === 'dashboard') return server.nextServer.render(req.raw, res.raw, '/dashboard');
 
       const url = await prisma.url.findFirst({
         where: {
@@ -158,25 +158,9 @@ async function main() {
     server.get(config.urls.route === '/' ? '/:id' : `${config.urls.route}/:id`, urlsRoute);
   }
 
-  if (!argv.includes('--skip-next'))
-    await server.register(next, {
-      dev: MODE === 'development',
-      quiet: MODE === 'production',
-      hostname: config.core.hostname,
-      port: config.core.port,
-      dir: '.',
-    });
-
   const routes = await loadRoutes();
   const routesOptions = Object.values(routes);
   Promise.all(routesOptions.map((route) => server.register(route)));
-
-  if (!argv.includes('--skip-next')) {
-    server.get('/', (_, res) => res.redirect('/dashboard'));
-    server.next('/*', ALL_METHODS);
-    server.next('/dashboard', ALL_METHODS);
-    server.next('/reload', ALL_METHODS);
-  }
 
   server.addContentTypeParser(
     'application/x-www-form-urlencoded',

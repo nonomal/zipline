@@ -12,8 +12,8 @@ import {
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { IconDeviceFloppy } from '@tabler/icons-react';
-import { useRouter } from 'next/router';
 import { useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { settingsOnSubmit } from '../settingsOnSubmit';
 
 export default function Ratelimit({
@@ -21,7 +21,8 @@ export default function Ratelimit({
 }: {
   swr: { data: Response['/api/server/settings'] | undefined; isLoading: boolean };
 }) {
-  const router = useRouter();
+  const navigate = useNavigate();
+
   const form = useForm<{
     ratelimitEnabled: boolean;
     ratelimitMax: number;
@@ -61,7 +62,7 @@ export default function Ratelimit({
       values.ratelimitWindow = null;
     }
 
-    return settingsOnSubmit(router, form)(values);
+    return settingsOnSubmit(navigate, form)(values);
   };
 
   useEffect(() => {

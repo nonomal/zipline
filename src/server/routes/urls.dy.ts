@@ -29,8 +29,8 @@ export async function urlsRoute(
       OR: [{ code: id }, { vanity: id }, { id }],
     },
   });
-  if (!url) return req.server.nextServer.render404(req.raw, res.raw, parsedUrl);
-  if (!url.enabled) return req.server.nextServer.render404(req.raw, res.raw, parsedUrl);
+  // if (!url) return req.server.nextServer.render404(req.raw, res.raw, parsedUrl);
+  // if (!url.enabled) return req.server.nextServer.render404(req.raw, res.raw, parsedUrl);
 
   if (url.maxViews && url.views >= url.maxViews) {
     if (config.features.deleteOnMaxViews) {

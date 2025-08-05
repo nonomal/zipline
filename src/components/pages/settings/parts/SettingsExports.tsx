@@ -4,7 +4,7 @@ import { ActionIcon, Button, Group, Paper, ScrollArea, Table, Title } from '@man
 import { modals } from '@mantine/modals';
 import { showNotification } from '@mantine/notifications';
 import { IconDownload, IconPlus, IconTrashFilled } from '@tabler/icons-react';
-import Link from 'next/link';
+import { Link } from 'react-router-dom';
 import useSWR from 'swr';
 
 export default function SettingsExports() {
@@ -100,7 +100,7 @@ export default function SettingsExports() {
                       <ActionIcon
                         component={Link}
                         target='_blank'
-                        href={`/api/user/export?id=${exportDb.id}`}
+                        to={`/api/user/export?id=${exportDb.id}`}
                         disabled={!exportDb.completed}
                       >
                         <IconDownload size='1rem' />

@@ -2,8 +2,8 @@ import { Response } from '@/lib/api/response';
 import { Button, Group, LoadingOverlay, Paper, SimpleGrid, TextInput, Title } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { IconPlus, IconTrash } from '@tabler/icons-react';
-import { useRouter } from 'next/router';
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { settingsOnSubmit } from '../settingsOnSubmit';
 
 export default function Domains({
@@ -11,7 +11,8 @@ export default function Domains({
 }: {
   swr: { data: Response['/api/server/settings'] | undefined; isLoading: boolean };
 }) {
-  const router = useRouter();
+  const navigate = useNavigate();
+
   const [domains, setDomains] = useState<string[]>([]);
   const form = useForm({
     initialValues: {
@@ -19,7 +20,7 @@ export default function Domains({
     },
   });
 
-  const onSubmit = settingsOnSubmit(router, form);
+  const onSubmit = settingsOnSubmit(navigate, form);
 
   useEffect(() => {
     if (!data) return;

@@ -1,21 +1,30 @@
-import { SafeConfig } from '@/lib/config/safe';
 import { createContext, useContext } from 'react';
+import { dashboardLoader } from '../../client/routes';
 
-const ConfigContext = createContext<SafeConfig | null>(null);
+type ConfigContextType = Awaited<ReturnType<typeof dashboardLoader>>;
+
+const ConfigContext = createContext<ConfigContextType | null>(null);
 
 export function useConfig() {
   const ctx = useContext(ConfigContext);
   if (!ctx) throw new Error('useConfig must be used within a ConfigProvider');
 
-  return ctx;
+  return ctx.config;
+}
+
+export function useCodeMap() {
+  const ctx = useContext(ConfigContext);
+  if (!ctx) throw new Error('useCodeMap must be used within a ConfigProvider');
+
+  return ctx.codeMap;
 }
 
 export default function ConfigProvider({
-  config,
+  data,
   children,
 }: {
-  config: SafeConfig;
+  data: ConfigContextType;
   children: React.ReactNode;
 }) {
-  return <ConfigContext.Provider value={config}>{children}</ConfigContext.Provider>;
+  return <ConfigContext.Provider value={data}>{children}</ConfigContext.Provider>;
 }

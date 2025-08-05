@@ -23,11 +23,11 @@ import { useClipboard } from '@mantine/hooks';
 import { modals } from '@mantine/modals';
 import { notifications } from '@mantine/notifications';
 import { IconClipboardCopy, IconExternalLink, IconLink, IconLinkOff } from '@tabler/icons-react';
-import Link from 'next/link';
 import { parseAsBoolean, useQueryState } from 'nuqs';
 import { mutate } from 'swr';
 import UrlGridView from './views/UrlGridView';
 import UrlTableView from './views/UrlTableView';
+import { Link } from 'react-router-dom';
 
 export default function DashboardURLs() {
   const clipboard = useClipboard();
@@ -96,7 +96,7 @@ export default function DashboardURLs() {
         notifications.show({
           title: 'Copied URL to clipboard',
           message: (
-            <Anchor component={Link} href={data?.url ?? ''} target='_blank'>
+            <Anchor component={Link} to={data?.url ?? ''} target='_blank'>
               {data?.url}
             </Anchor>
           ),
@@ -112,7 +112,7 @@ export default function DashboardURLs() {
           <Group justify='space-between'>
             <Group justify='left'>
               {data?.enabled ? (
-                <Anchor component={Link} href={data?.url ?? ''}>
+                <Anchor component={Link} to={data?.url ?? ''}>
                   {data?.url}
                 </Anchor>
               ) : (

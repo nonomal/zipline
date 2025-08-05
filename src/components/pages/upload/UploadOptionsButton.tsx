@@ -30,9 +30,9 @@ import {
   IconTrashFilled,
   IconWriting,
 } from '@tabler/icons-react';
-import Link from 'next/link';
 import { parseAsBoolean, useQueryState } from 'nuqs';
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import useSWR from 'swr';
 import { useShallow } from 'zustand/shallow';
 
@@ -151,7 +151,7 @@ export default function UploadOptionsButton({ folder, numFiles }: { folder?: str
                 ) : (
                   <>
                     {'You can set a default expiration time in the '}
-                    <Link href='/dashboard/admin/settings'>settings</Link>
+                    <Link to='/dashboard/admin/settings'>settings</Link>
                     {'.'}
                   </>
                 )}

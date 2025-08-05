@@ -38,13 +38,13 @@ import {
   IconTrashFilled,
 } from '@tabler/icons-react';
 import { DataTable } from 'mantine-datatable';
-import Link from 'next/link';
 import { parseAsBoolean, parseAsInteger, parseAsStringLiteral, useQueryState } from 'nuqs';
 import { useEffect, useReducer, useState } from 'react';
 import useSWR from 'swr';
 import { bulkDelete, bulkFavorite } from '../bulk';
 import TagPill from '../tags/TagPill';
 import { useApiPagination } from '../useApiPagination';
+import { Link } from 'react-router-dom';
 
 type ReducerQuery = {
   state: { name: string; originalName: string; type: string; tags: string; id: string };
@@ -503,7 +503,7 @@ export default function FileTable({ id }: { id?: string }) {
                   </Tooltip>
 
                   <Tooltip label='View file in new tab'>
-                    <Link href={`/view/${file.name}`} target='_blank'>
+                    <Link to={`/view/${file.name}`} target='_blank'>
                       <ActionIcon color='blue'>
                         <IconExternalLink size='1rem' />
                       </ActionIcon>

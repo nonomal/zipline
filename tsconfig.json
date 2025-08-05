@@ -18,6 +18,6 @@
       "@/*": ["./src/*", "./generated/*"]
     }
   },
-  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", "src/client/mount.js"],
+  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", "client/mount.js"],
   "exclude": ["node_modules", "uploads"]
 }

@@ -1,11 +1,8 @@
 import ExternalAuthButton from '@/components/pages/login/ExternalAuthButton';
 import { Response } from '@/lib/api/response';
-import { SafeConfig } from '@/lib/config/safe';
-import { getZipline } from '@/lib/db/models/zipline';
 import { fetchApi } from '@/lib/fetchApi';
-import { withSafeConfig } from '@/lib/middleware/next/withSafeConfig';
+import useLogin from '@/lib/hooks/useLogin';
 import { authenticateWeb } from '@/lib/passkey';
-import { eitherTrue } from '@/lib/primitive';
 import {
   Button,
   Center,
@@ -34,28 +31,38 @@ import {
   IconUserPlus,
   IconX,
 } from '@tabler/icons-react';
-import { InferGetServerSidePropsType } from 'next';
-import Link from 'next/link';
-import { useRouter } from 'next/router';
 import { useEffect, useState } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import useSWR from 'swr';
 
-export default function Login({ config }: InferGetServerSidePropsType<typeof getServerSideProps>) {
-  const router = useRouter();
-  const { data, isLoading, mutate } = useSWR<Response['/api/user']>('/api/user', {
-    refreshInterval: 120000,
+export default function Login() {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const query = new URLSearchParams(location.search);
+  const { user, mutate } = useLogin();
+
+  const {
+    data: config,
+    error: configError,
+    isLoading: configLoading,
+  } = useSWR<Response['/api/server/public']>('/api/server/public', {
+    revalidateOnFocus: false,
+    revalidateOnReconnect: false,
+    refreshWhenHidden: false,
+    revalidateIfStale: false,
   });
 
   const showLocalLogin =
-    router.query.local === 'true' ||
+    query.get('local') === 'true' ||
     !(
-      config.oauth.bypassLocalLogin && Object.values(config.oauthEnabled).filter((x) => x === true).length > 0
+      config?.oauth?.bypassLocalLogin &&
+      Object.values(config?.oauthEnabled ?? {}).filter((x) => x === true).length > 0
     );
 
   const willRedirect =
-    config.oauth.bypassLocalLogin &&
-    Object.values(config.oauthEnabled).filter((x) => x === true).length === 1 &&
-    router.query.local !== 'true';
+    config?.oauth?.bypassLocalLogin &&
+    Object.values(config?.oauthEnabled ?? {}).filter((x) => x === true).length === 1 &&
+    query.get('local') !== 'true';
 
   const [totpOpen, setTotpOpen] = useState(false);
   const [pinDisabled, setPinDisabled] = useState(false);
@@ -64,12 +71,6 @@ export default function Login({ config }: InferGetServerSidePropsType<typeof get
 
   const [passkeyErrored, setPasskeyErrored] = useState(false);
   const [passkeyLoading, setPasskeyLoading] = useState(false);
-
-  useEffect(() => {
-    if (data?.user) {
-      router.push('/dashboard');
-    }
-  }, [data]);
 
   const form = useForm({
     initialValues: {
@@ -123,7 +124,6 @@ export default function Login({ config }: InferGetServerSidePropsType<typeof get
     try {
       setPasskeyLoading(true);
       const res = await authenticateWeb();
-
       const { data, error } = await fetchApi<Response['/api/auth/webauthn']>('/api/auth/webauthn', 'POST', {
         auth: res.toJSON(),
       });
@@ -146,16 +146,22 @@ export default function Login({ config }: InferGetServerSidePropsType<typeof get
   };
 
   useEffect(() => {
-    if (willRedirect) {
+    if (user) {
+      navigate('/dashboard', { replace: true });
+    }
+  }, [user]);
+
+  useEffect(() => {
+    if (willRedirect && config) {
       const provider = Object.keys(config.oauthEnabled).find(
-        (x) => config.oauthEnabled[x as keyof SafeConfig['oauthEnabled']] === true,
+        (x) => config.oauthEnabled[x as keyof typeof config.oauthEnabled] === true,
       );
 
       if (provider) {
-        router.push(`/api/auth/oauth/${provider}`);
+        navigate(`/api/auth/oauth/${provider.toLowerCase()}`, { replace: true });
       }
     }
-  }, []);
+  }, [willRedirect, config]);
 
   useEffect(() => {
     if (passkeyErrored) {
@@ -171,6 +177,26 @@ export default function Login({ config }: InferGetServerSidePropsType<typeof get
       });
     }
   }, [passkeyErrored]);
+
+  if (configLoading) {
+    return <LoadingOverlay visible />;
+  }
+
+  if (configError) {
+    return (
+      <Center h='100vh'>
+        <Text c='red'>Failed to load configuration. Please try again later.</Text>
+      </Center>
+    );
+  }
+
+  if (!config) {
+    return (
+      <Center h='100vh'>
+        <Text c='red'>Configuration is not available. Please try again later.</Text>
+      </Center>
+    );
+  }
 
   return (
     <>
@@ -255,7 +281,10 @@ export default function Login({ config }: InferGetServerSidePropsType<typeof get
               ta='center'
               style={{
                 whiteSpace: 'normal',
-                fontSize: `clamp(20px, ${Math.max(50 - (config.website.title?.length ?? 0) / 2, 20)}px, 50px)`,
+                fontSize: `clamp(20px, ${Math.max(
+                  50 - (config.website.title?.length ?? 0) / 2,
+                  20,
+                )}px, 50px)`,
               }}
             >
               <b>{config.website.title ?? 'Zipline'}</b>
@@ -263,47 +292,45 @@ export default function Login({ config }: InferGetServerSidePropsType<typeof get
           </div>
 
           {showLocalLogin && (
-            <>
-              <form onSubmit={form.onSubmit((v) => onSubmit(v))}>
-                <Stack my='sm'>
-                  <TextInput
-                    size='md'
-                    placeholder='Enter your username...'
-                    styles={{
-                      input: {
-                        backgroundColor: config.website.loginBackground ? 'transparent' : undefined,
-                      },
-                    }}
-                    {...form.getInputProps('username', { withError: true })}
-                  />
+            <form onSubmit={form.onSubmit((v) => onSubmit(v))}>
+              <Stack my='sm'>
+                <TextInput
+                  size='md'
+                  placeholder='Enter your username...'
+                  styles={{
+                    input: {
+                      backgroundColor: config.website.loginBackground ? 'transparent' : undefined,
+                    },
+                  }}
+                  {...form.getInputProps('username', { withError: true })}
+                />
 
-                  <PasswordInput
-                    size='md'
-                    placeholder='Enter your password...'
-                    styles={{
-                      input: {
-                        backgroundColor: config.website.loginBackground ? 'transparent' : undefined,
-                      },
-                    }}
-                    {...form.getInputProps('password')}
-                  />
+                <PasswordInput
+                  size='md'
+                  placeholder='Enter your password...'
+                  styles={{
+                    input: {
+                      backgroundColor: config.website.loginBackground ? 'transparent' : undefined,
+                    },
+                  }}
+                  {...form.getInputProps('password')}
+                />
 
-                  <Button
-                    size='md'
-                    fullWidth
-                    type='submit'
-                    loading={isLoading}
-                    variant={config.website.loginBackground ? 'outline' : 'filled'}
-                  >
-                    Login
-                  </Button>
-                </Stack>
-              </form>
-            </>
+                <Button
+                  size='md'
+                  fullWidth
+                  type='submit'
+                  loading={!config}
+                  variant={config.website.loginBackground ? 'outline' : 'filled'}
+                >
+                  Login
+                </Button>
+              </Stack>
+            </form>
           )}
 
           <Stack my='xs'>
-            {eitherTrue(config.features.oauthRegistration, config.features.userRegistration) && (
+            {(config.features.oauthRegistration || config.features.userRegistration) && (
               <Divider label='or' />
             )}
 
@@ -324,7 +351,7 @@ export default function Login({ config }: InferGetServerSidePropsType<typeof get
             {config.features.userRegistration && (
               <Button
                 component={Link}
-                href='/auth/register'
+                to='/auth/register'
                 size='md'
                 fullWidth
                 variant='outline'
@@ -333,6 +360,7 @@ export default function Login({ config }: InferGetServerSidePropsType<typeof get
                 Sign up
               </Button>
             )}
+
             <Group grow>
               {config.oauthEnabled.discord && (
                 <ExternalAuthButton
@@ -359,19 +387,3 @@ export default function Login({ config }: InferGetServerSidePropsType<typeof get
     </>
   );
 }
-
-export const getServerSideProps = withSafeConfig(async () => {
-  const { firstSetup } = await getZipline();
-
-  if (firstSetup)
-    return {
-      redirect: {
-        destination: '/setup',
-        permanent: false,
-      },
-    };
-
-  return {};
-});
-
-Login.title = 'Login';

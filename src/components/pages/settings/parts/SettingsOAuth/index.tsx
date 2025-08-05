@@ -15,10 +15,10 @@ import {
   IconCircleKeyFilled,
   IconUserExclamation,
 } from '@tabler/icons-react';
-import Link from 'next/link';
 import { mutate } from 'swr';
 
 import styles from './index.module.css';
+import { Link } from 'react-router-dom';
 
 const icons = {
   DISCORD: <IconBrandDiscordFilled size='1rem' />,
@@ -76,7 +76,7 @@ function OAuthButton({ provider, linked }: { provider: OAuthProviderType; linked
       Unlink {names[provider]} account
     </Button>
   ) : (
-    <Button {...baseProps} component={Link} href={`/api/auth/oauth/${provider.toLowerCase()}?state=link`}>
+    <Button {...baseProps} component={Link} to={`/api/auth/oauth/${provider.toLowerCase()}?state=link`}>
       Link {names[provider]} account
     </Button>
   );

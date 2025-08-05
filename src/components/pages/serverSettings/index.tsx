@@ -1,58 +1,28 @@
 import { Response } from '@/lib/api/response';
 import { Alert, Anchor, Collapse, Group, SimpleGrid, Skeleton, Stack, Title } from '@mantine/core';
-import useSWR from 'swr';
-import dynamic from 'next/dynamic';
 import { useDisclosure } from '@mantine/hooks';
+import useSWR from 'swr';
+import Chunks from './parts/Chunks';
+import Core from './parts/Core';
+import Discord from './parts/Discord';
 import Domains from './parts/Domains';
+import Features from './parts/Features';
+import Files from './parts/Files';
+import HttpWebhook from './parts/HttpWebhook';
+import Invites from './parts/Invites';
+import Mfa from './parts/Mfa';
+import Oauth from './parts/Oauth';
+import PWA from './parts/PWA';
+import Ratelimit from './parts/Ratelimit';
+import Tasks from './parts/Tasks';
+import Urls from './parts/Urls';
+import Website from './parts/Website';
 
 function SettingsSkeleton() {
   return <Skeleton height={280} animate />;
 }
 
-const Core = dynamic(() => import('./parts/Core'), {
-  loading: () => <SettingsSkeleton />,
-});
-const Chunks = dynamic(() => import('./parts/Chunks'), {
-  loading: () => <SettingsSkeleton />,
-});
-const Discord = dynamic(() => import('./parts/Discord'), {
-  loading: () => <SettingsSkeleton />,
-});
-const Features = dynamic(() => import('./parts/Features'), {
-  loading: () => <SettingsSkeleton />,
-});
-const Files = dynamic(() => import('./parts/Files'), {
-  loading: () => <SettingsSkeleton />,
-});
-const HttpWebhook = dynamic(() => import('./parts/HttpWebhook'), {
-  loading: () => <SettingsSkeleton />,
-});
-const Invites = dynamic(() => import('./parts/Invites'), {
-  loading: () => <SettingsSkeleton />,
-});
-const Mfa = dynamic(() => import('./parts/Mfa'), {
-  loading: () => <SettingsSkeleton />,
-});
-const Oauth = dynamic(() => import('./parts/Oauth'), {
-  loading: () => <SettingsSkeleton />,
-});
-const Ratelimit = dynamic(() => import('./parts/Ratelimit'), {
-  loading: () => <SettingsSkeleton />,
-});
-const Tasks = dynamic(() => import('./parts/Tasks'), {
-  loading: () => <SettingsSkeleton />,
-});
-const Urls = dynamic(() => import('./parts/Urls'), {
-  loading: () => <SettingsSkeleton />,
-});
-const Website = dynamic(() => import('./parts/Website'), {
-  loading: () => <SettingsSkeleton />,
-});
-const PWA = dynamic(() => import('./parts/PWA'), {
-  loading: () => <SettingsSkeleton />,
-});
-
-export default function DashboardSettings() {
+export default function DashboardServerSettings() {
   const { data, isLoading, error } = useSWR<Response['/api/server/settings']>('/api/server/settings');
   const [opened, { toggle }] = useDisclosure(false);
 

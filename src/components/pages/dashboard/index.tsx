@@ -1,15 +1,15 @@
+import DashboardFile from '@/components/file/DashboardFile';
 import Stat from '@/components/Stat';
 import type { Response } from '@/lib/api/response';
 import { bytes } from '@/lib/bytes';
 import useLogin from '@/lib/hooks/useLogin';
 import { Paper, ScrollArea, SimpleGrid, Skeleton, Table, Text, Title } from '@mantine/core';
 import { IconDeviceSdCard, IconEyeFilled, IconFiles, IconLink, IconStarFilled } from '@tabler/icons-react';
-import dynamic from 'next/dynamic';
 import useSWR from 'swr';
 
-const DashboardFile = dynamic(() => import('@/components/file/DashboardFile'), {
-  loading: () => <Skeleton height={350} animate />,
-});
+// const DashboardFile = dynamic(() => import('@/components/file/DashboardFile'), {
+//   loading: () => <Skeleton height={350} animate />,
+// });
 
 export default function DashboardHome() {
   const { user } = useLogin();
