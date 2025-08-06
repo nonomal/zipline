@@ -25,7 +25,17 @@ export type ApiServerSettingsWebResponse = {
 };
 type Body = Partial<Settings>;
 
-const reservedRoutes = ['/dashboard', '/api', '/raw', '/robots.txt', '/manifest.json', '/favicon.ico'];
+export const reservedRoutes = [
+  '/dashboard',
+  '/auth',
+  '/api',
+  '/raw',
+  '/invite',
+  '/view',
+  '/robots.txt',
+  '/manifest.json',
+  '/favicon.ico',
+];
 
 const zMs = z.string().refine((value) => ms(value as StringValue) > 0, 'Value must be greater than 0');
 const zBytes = z.string().refine((value) => bytes(value) > 0, 'Value must be greater than 0');

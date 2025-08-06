@@ -1,25 +1,61 @@
-import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
+import { defineConfig } from 'vite';
 
 // https://vite.dev/config/
-export default defineConfig({
-  plugins: [react()],
-  root: 'client',
-  build: {
-    outDir: 'dist',
-    emptyOutDir: true,
-  },
-  server: {
-    port: 5173,
-    proxy: {
-      '/api': 'http://localhost:3001',
-      '/raw': 'http://localhost:3001',
+export default defineConfig(({ mode }) => {
+  if (mode === 'development')
+    return {
+      plugins: [react()],
+      root: 'client',
+      build: {
+        outDir: '../build/client',
+        rollupOptions: {
+          output: {
+            format: 'cjs',
+          },
+        },
+      },
+      server: {
+        middlewareMode: true,
+      },
+      resolve: {
+        alias: {
+          '@': path.resolve(__dirname, './src'),
+        },
+      },
+    };
+
+  return {
+    plugins: [react()],
+    root: 'client',
+    build: {
+      outDir: '../build/client',
+      emptyOutDir: true,
+      sourcemap: true,
+      minify: false,
+
+      rollupOptions: {
+        input: {
+          main: path.resolve(__dirname, 'client/index.html'),
+          'ssr-view': path.resolve(__dirname, 'client/ssr-view/index.html'),
+          'ssr-view-url': path.resolve(__dirname, 'client/ssr-view-url/index.html'),
+        },
+        ...(mode.startsWith('ssr') && {
+          output: {
+            entryFileNames: mode + '.js',
+            format: 'cjs',
+          },
+          plugins: [],
+        }),
+      },
     },
-  },
-  resolve: {
-    alias: {
-      '@': path.resolve(__dirname, './src'),
+    resolve: {
+      alias: {
+        '@': path.resolve(__dirname, './src'),
+      },
     },
-  },
+  };
 });
+
+console.log('Vite configuration loaded');

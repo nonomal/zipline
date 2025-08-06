@@ -12,12 +12,12 @@ import {
   Title,
 } from '@mantine/core';
 import { IconFileUpload, IconFilesOff } from '@tabler/icons-react';
-import { parseAsInteger, useQueryState } from 'nuqs';
 import { useApiPagination } from '../files/useApiPagination';
 import { Link } from 'react-router-dom';
+import { useState } from 'react';
 
 export default function FavoriteFiles() {
-  const [page, setPage] = useQueryState('fpage', parseAsInteger.withDefault(1));
+  const [page, setPage] = useState(1);
   const { data, isLoading } = useApiPagination({
     page,
     favorite: true,

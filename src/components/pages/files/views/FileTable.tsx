@@ -38,7 +38,6 @@ import {
   IconTrashFilled,
 } from '@tabler/icons-react';
 import { DataTable } from 'mantine-datatable';
-import { parseAsBoolean, parseAsInteger, parseAsStringLiteral, useQueryState } from 'nuqs';
 import { useEffect, useReducer, useState } from 'react';
 import useSWR from 'swr';
 import { bulkDelete, bulkFavorite } from '../bulk';
@@ -186,30 +185,25 @@ export default function FileTable({ id }: { id?: string }) {
     '/api/user/folders?noincl=true',
   );
 
-  const [page, setPage] = useQueryState('page', parseAsInteger.withDefault(1));
-  const [perpage, setPerpage] = useState<number>(20);
-  const [sort, setSort] = useQueryState(
-    'sort',
-    parseAsStringLiteral([
-      'id',
-      'createdAt',
-      'updatedAt',
-      'deletesAt',
-      'name',
-      'originalName',
-      'size',
-      'type',
-      'views',
-      'favorite',
-    ]).withDefault('createdAt'),
-  );
-  const [order, setOrder] = useQueryState<'asc' | 'desc'>(
-    'order',
-    parseAsStringLiteral(['asc', 'desc']).withDefault('desc'),
-  );
+  // const [page, setPage] = useQueryState('page', parseAsInteger.withDefault(1));
+  const [page, setPage] = useState(1);
+  const [perpage, setPerpage] = useState(20);
+  const [sort, setSort] = useState<
+    | 'id'
+    | 'createdAt'
+    | 'updatedAt'
+    | 'deletesAt'
+    | 'name'
+    | 'originalName'
+    | 'size'
+    | 'type'
+    | 'views'
+    | 'favorite'
+  >('createdAt');
+  const [order, setOrder] = useState<'asc' | 'desc'>('desc');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
-  const [idSearchOpen, setIdSearchOpen] = useQueryState('idsearch', parseAsBoolean.withDefault(false));
+  const [idSearchOpen, setIdSearchOpen] = useState(false);
   const [searchField, setSearchField] = useState<'name' | 'originalName' | 'type' | 'tags' | 'id'>('name');
   const [searchQuery, setSearchQuery] = useReducer(
     (state: ReducerQuery['state'], action: ReducerQuery['action']) => {

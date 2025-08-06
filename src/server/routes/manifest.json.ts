@@ -1,6 +1,5 @@
 import { config } from '@/lib/config';
 import fastifyPlugin from 'fastify-plugin';
-import { parse } from 'url';
 
 function generateIcons(sizes: number[]) {
   return sizes.map((size) => ({
@@ -14,7 +13,7 @@ export const PATH = '/manifest.json';
 export default fastifyPlugin(
   (server, _, done) => {
     server.get(PATH, async (req, res) => {
-      // if (!config.pwa.enabled) return req.server.nextServer.render404(req.raw, res.raw, parsedUrl);
+      if (!config.pwa.enabled) return res.callNotFound();
 
       return {
         name: config.pwa.title,

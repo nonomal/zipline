@@ -6,7 +6,7 @@ import { useUserStore } from '@/lib/store/user';
 import { darken } from '@/lib/theme/color';
 import { Button, ButtonProps, Paper, SimpleGrid, Text, Title, useMantineTheme } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
-import type { OAuthProviderType } from '../../../../../../generated/client';
+import type { OAuthProviderType } from '@/prisma/client';
 import {
   IconBrandDiscordFilled,
   IconBrandGithubFilled,

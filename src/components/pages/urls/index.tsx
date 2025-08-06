@@ -23,17 +23,17 @@ import { useClipboard } from '@mantine/hooks';
 import { modals } from '@mantine/modals';
 import { notifications } from '@mantine/notifications';
 import { IconClipboardCopy, IconExternalLink, IconLink, IconLinkOff } from '@tabler/icons-react';
-import { parseAsBoolean, useQueryState } from 'nuqs';
+import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { mutate } from 'swr';
 import UrlGridView from './views/UrlGridView';
 import UrlTableView from './views/UrlTableView';
-import { Link } from 'react-router-dom';
 
 export default function DashboardURLs() {
   const clipboard = useClipboard();
   const view = useViewStore((state) => state.urls);
 
-  const [open, setOpen] = useQueryState('cuopen', parseAsBoolean.withDefault(false));
+  const [open, setOpen] = useState(false);
 
   const form = useForm<{
     url: string;

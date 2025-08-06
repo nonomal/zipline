@@ -5,6 +5,7 @@ import { User, userSelect } from '@/lib/db/models/user';
 import { FastifyReply } from 'fastify';
 import { FastifyRequest } from 'fastify/types/request';
 import { getSession } from '../session';
+// import cookie from 'cookie';
 import * as cookie from 'cookie';
 
 declare module 'fastify' {

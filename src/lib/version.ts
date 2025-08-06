@@ -1,6 +1,4 @@
-// TODO: implement version checking against the API at https://zipline.diced.sh
-
-import { version } from '../../package.json';
+import { version } from '../../package.json' with { type: 'json' };
 import { execSync } from 'child_process';
 
 export function gitSha() {

@@ -10,19 +10,15 @@ import UploadFile from '@/components/pages/upload/File';
 import UploadText from '@/components/pages/upload/Text';
 import DashboardURLs from '@/components/pages/urls';
 import DashboardUsers from '@/components/pages/users';
-import ThemeProvider from '@/components/ThemeProvider';
 import { Response as ApiResponse } from '@/lib/api/response';
-import { ModalsProvider } from '@mantine/modals';
-import { Notifications } from '@mantine/notifications';
-import { NuqsAdapter } from 'nuqs/adapters/react-router';
-import { createBrowserRouter, Outlet } from 'react-router-dom';
-import { SWRConfig } from 'swr';
+import { createBrowserRouter } from 'react-router-dom';
 import Login from './pages/auth/login';
 import Logout from './pages/auth/logout';
 import Register from './pages/auth/register';
 import Tos from './pages/auth/tos';
 import ViewFolderId from './pages/folder/[id]';
 import ViewFolderIdUpload from './pages/folder/[id]/upload';
+import Root from './Root';
 
 export async function dashboardLoader(): Promise<ApiResponse['/api/server/settings/web']> {
   const res = await fetch('/api/server/settings/web');
@@ -31,7 +27,6 @@ export async function dashboardLoader(): Promise<ApiResponse['/api/server/settin
   }
 
   const data = await res.json();
-
   console.log('Loaded settings:', data);
 
   return data;
@@ -39,32 +34,7 @@ export async function dashboardLoader(): Promise<ApiResponse['/api/server/settin
 
 export const router = createBrowserRouter([
   {
-    Component: () => (
-      <SWRConfig
-        value={{
-          fetcher: async (url: RequestInfo | URL) => {
-            const res = await fetch(url);
-
-            if (!res.ok) {
-              const json = await res.json();
-
-              throw new Error(json.message);
-            }
-
-            return res.json();
-          },
-        }}
-      >
-        <NuqsAdapter>
-          <ThemeProvider>
-            <ModalsProvider>
-              <Notifications />
-              <Outlet />
-            </ModalsProvider>
-          </ThemeProvider>
-        </NuqsAdapter>
-      </SWRConfig>
-    ),
+    Component: () => <Root />,
     path: '/',
     children: [
       {

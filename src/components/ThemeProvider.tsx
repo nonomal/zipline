@@ -1,4 +1,5 @@
 import { Response } from '@/lib/api/response';
+import { Config } from '@/lib/config/validate';
 import { useSettingsStore } from '@/lib/store/settings';
 import { useUserStore } from '@/lib/store/user';
 import { ZiplineTheme, findTheme, themeComponents } from '@/lib/theme';
@@ -22,9 +23,17 @@ export function useThemes() {
   return ctx.themes;
 }
 
-export default function Theming({ children }: { children: React.ReactNode }) {
+export default function ThemeProvider({
+  ssrThemes,
+  ssrDefaultTheme,
+  children,
+}: {
+  ssrThemes?: ZiplineTheme[];
+  ssrDefaultTheme?: Config['website']['theme'];
+  children: React.ReactNode;
+}) {
   const {
-    data: themes,
+    data: clientThemes,
     error,
     isLoading,
   } = useSWR<Response['/api/server/themes']>('/api/server/themes', {
@@ -34,22 +43,25 @@ export default function Theming({ children }: { children: React.ReactNode }) {
     revalidateIfStale: false,
   });
 
+  const themes = ssrThemes ?? clientThemes?.themes;
+  const defaultTheme = ssrDefaultTheme ?? clientThemes?.defaultTheme;
+
   const user = useUserStore((state) => state.user);
   const [userTheme, preferredDark, preferredLight] = useSettingsStore(
     useShallow((state) => [state.settings.theme, state.settings.themeDark, state.settings.themeLight]),
   );
   const systemTheme = useColorScheme();
-  const currentTheme = user ? userTheme : (themes?.defaultTheme?.default ?? 'system');
+  const currentTheme = user ? userTheme : (defaultTheme?.default ?? 'system');
 
-  let theme = findTheme(currentTheme, themes?.themes);
+  let theme = findTheme(currentTheme, themes);
 
   if (currentTheme === 'system') {
     theme =
       systemTheme === 'dark'
-        ? (findTheme(user ? preferredDark : (themes?.defaultTheme?.dark ?? ''), themes?.themes) ??
-          findTheme('builtin:dark_blue', themes?.themes))
-        : (findTheme(user ? preferredLight : (themes?.defaultTheme?.light ?? ''), themes?.themes) ??
-          findTheme('builtin:light_blue', themes?.themes));
+        ? (findTheme(user ? preferredDark : (defaultTheme?.dark ?? ''), themes) ??
+          findTheme('builtin:dark_blue', themes))
+        : (findTheme(user ? preferredLight : (defaultTheme?.light ?? ''), themes) ??
+          findTheme('builtin:light_blue', themes));
   }
 
   if (!theme) {
@@ -57,7 +69,7 @@ export default function Theming({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <ThemeContext.Provider value={{ themes: themes?.themes ?? [] }}>
+    <ThemeContext.Provider value={{ themes: themes ?? [] }}>
       <MantineProvider
         defaultColorScheme={theme.colorScheme as unknown as any}
         forceColorScheme={theme.colorScheme as unknown as any}

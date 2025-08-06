@@ -12,7 +12,6 @@ import {
   Title,
 } from '@mantine/core';
 import { IconFileUpload, IconFilesOff } from '@tabler/icons-react';
-import { parseAsInteger, useQueryState } from 'nuqs';
 import { useEffect, useState } from 'react';
 import { useApiPagination } from '../useApiPagination';
 import DashboardFile from '@/components/file/DashboardFile';
@@ -21,9 +20,9 @@ import { Link } from 'react-router-dom';
 const PER_PAGE_OPTIONS = [9, 12, 15, 30, 45];
 
 export default function Files({ id }: { id?: string }) {
-  const [page, setPage] = useQueryState('page', parseAsInteger.withDefault(1));
-  const [perpage, setPerpage] = useState<number>(15);
-  const [cachedPages, setCachedPages] = useState<number>(1);
+  const [page, setPage] = useState(1);
+  const [perpage, setPerpage] = useState(15);
+  const [cachedPages, setCachedPages] = useState(1);
 
   const { data, isLoading } = useApiPagination({
     page,

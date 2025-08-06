@@ -21,10 +21,11 @@ import { fastifyStatic } from '@fastify/static';
 import fastify from 'fastify';
 import { mkdir, readFile } from 'fs/promises';
 import ms, { StringValue } from 'ms';
-import querystring from 'querystring';
-import { version } from '../../package.json';
+import { createServer as createViteServer } from 'vite';
+import { version } from '../../package.json' with { type: 'json' };
 import { checkRateLimit } from './plugins/checkRateLimit';
 import oauthPlugin from './plugins/oauth';
+import vitePlugin from './plugins/vite';
 import loadRoutes from './routes';
 import { filesRoute } from './routes/files.dy';
 import { urlsRoute } from './routes/urls.dy';
@@ -95,7 +96,7 @@ async function main() {
     root: config.core.tempDirectory,
   });
 
-  // todo serve vite
+  await server.register(vitePlugin);
 
   await server.register(oauthPlugin);
 
@@ -134,15 +135,22 @@ async function main() {
     }
   }
 
+  server.get<{ Params: { id: string } }>('/view/:id', async (req, res) => {
+    return res.ssr('view');
+  });
+
+  server.get<{ Params: { id: string } }>('/view/url/:id', async (req, res) => {
+    return res.ssr('view-url');
+  });
+
   if (config.files.route === '/' && config.urls.route === '/') {
     logger.debug('files & urls route = /, using catch-all route');
 
     server.get<{ Params: { id: string } }>('/:id', async (req, res) => {
       const { id } = req.params;
-      // const parsedUrl = parse(req.url!, true);
 
-      // if (id === '') return server.nextServer.render404(req.raw, res.raw, parsedUrl);
-      // else if (id === 'dashboard') return server.nextServer.render(req.raw, res.raw, '/dashboard');
+      if (id === '') return res.callNotFound();
+      else if (id === 'dashboard') return res.callNotFound(); // todo render dashboard
 
       const url = await prisma.url.findFirst({
         where: {
@@ -162,21 +170,12 @@ async function main() {
   const routesOptions = Object.values(routes);
   Promise.all(routesOptions.map((route) => server.register(route)));
 
-  server.addContentTypeParser(
-    'application/x-www-form-urlencoded',
-    { parseAs: 'string' },
-    (req, body, done) => {
-      try {
-        const parsedBody = querystring.parse(body.toString());
-
-        // setting the inner request.body so that next.js can access it.
-        req.raw.body = parsedBody;
-        done(null, parsedBody);
-      } catch {
-        done(null, {});
-      }
-    },
-  );
+  if (MODE === 'production') {
+    server.serveIndex('/dashboard*');
+    server.serveIndex('/auth*');
+    server.serveIndex('/folder*');
+    server.get('/', (_, res) => res.redirect('/dashboard', 301));
+  }
 
   server.setErrorHandler((error, _, res) => {
     if (error.statusCode) {
@@ -260,6 +259,7 @@ main();
 declare module 'fastify' {
   interface FastifyInstance {
     tasks: Tasks;
+    vite?: Awaited<ReturnType<typeof createViteServer>>;
   }
 }
 
