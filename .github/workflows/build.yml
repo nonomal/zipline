@@ -37,10 +37,9 @@ jobs:
         with:
           path: |
             ${{ steps.pnpm-cache.outputs.store_path }}
-            ${{ github.workspace }}/.next/cache
-          key: ${{ runner.os }}-${{ matrix.arch }}-${{ matrix.node }}-pnpm-next-store-${{ hashFiles('**/pnpm-lock.yaml') }}-${{ hashFiles('**/*.js', '**/*.jsx', '**/*.ts', '**/*.tsx') }}
+          key: ${{ runner.os }}-${{ matrix.arch }}-${{ matrix.node }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}-${{ hashFiles('**/*.js', '**/*.jsx', '**/*.ts', '**/*.tsx') }}
           restore-keys: |
-            ${{ runner.os }}-${{ matrix.arch }}-${{ matrix.node }}-pnpm-next-store-${{ hashFiles('**/package-lock.json') }}-
+            ${{ runner.os }}-${{ matrix.arch }}-${{ matrix.node }}-pnpm-store-${{ hashFiles('**/package-lock.json') }}-
 
       - name: Install
         run: pnpm install
@@ -54,5 +53,4 @@ jobs:
       - name: Build
         env:
           ZIPLINE_BUILD: 'true'
-          NEXT_TELEMETRY_DISABLED: '1'
         run: pnpm build:skip
