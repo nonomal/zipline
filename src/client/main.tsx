@@ -1,5 +1,4 @@
 import { StrictMode } from 'react';
-import { hydrateRoot } from 'react-dom/client';
 import { RouterProvider } from 'react-router-dom';
 import { router } from './routes';
 
@@ -9,9 +8,9 @@ import '@mantine/dates/styles.css';
 import '@mantine/dropzone/styles.css';
 import '@mantine/notifications/styles.css';
 import 'mantine-datatable/styles.css';
+import { createRoot } from 'react-dom/client';
 
-hydrateRoot(
-  document.getElementById('root')!,
+createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <RouterProvider router={router} />
   </StrictMode>,

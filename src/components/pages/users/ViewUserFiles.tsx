@@ -5,9 +5,15 @@ import { ActionIcon, Group, Title, Tooltip } from '@mantine/core';
 import FileTable from '../files/views/FileTable';
 import Files from '../files/views/Files';
 import { IconArrowBackUp } from '@tabler/icons-react';
-import { Link } from 'react-router-dom';
+import { Link, useLoaderData } from 'react-router-dom';
 
-export default function ViewFiles({ user }: { user: User }) {
+export default function ViewUserFiles() {
+  const data = useLoaderData<{
+    user: User;
+  }>();
+  if (!data) return null;
+
+  const { user } = data;
   if (!user) return null;
 
   const view = useViewStore((state) => state.files);

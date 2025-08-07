@@ -177,6 +177,18 @@ async function main() {
     server.get('/', (_, res) => res.redirect('/dashboard', 301));
   }
 
+  server.setNotFoundHandler((req, res) => {
+    if (req.url.startsWith('/api/')) {
+      return res.status(404).send({
+        message: `Route ${req.method}:${req.url} not found`,
+        error: 'Not Found',
+        statusCode: 404,
+      });
+    } else {
+      return res.serveIndex();
+    }
+  });
+
   server.setErrorHandler((error, _, res) => {
     if (error.statusCode) {
       res.status(error.statusCode);

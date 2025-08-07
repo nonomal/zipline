@@ -32,14 +32,16 @@ import {
   IconX,
 } from '@tabler/icons-react';
 import { useEffect, useState } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, redirect, useLocation, useNavigate } from 'react-router-dom';
 import useSWR from 'swr';
+import GenericError from '../../error/GenericError';
 
 export default function Login() {
-  const navigate = useNavigate();
   const location = useLocation();
   const query = new URLSearchParams(location.search);
   const { user, mutate } = useLogin();
+
+  const navigate = useNavigate();
 
   const {
     data: config,
@@ -147,7 +149,7 @@ export default function Login() {
 
   useEffect(() => {
     if (user) {
-      navigate('/dashboard', { replace: true });
+      navigate('/dashboard');
     }
   }, [user]);
 
@@ -158,7 +160,7 @@ export default function Login() {
       );
 
       if (provider) {
-        navigate(`/api/auth/oauth/${provider.toLowerCase()}`, { replace: true });
+        redirect(`/api/auth/oauth/${provider.toLowerCase()}`);
       }
     }
   }, [willRedirect, config]);
@@ -178,25 +180,22 @@ export default function Login() {
     }
   }, [passkeyErrored]);
 
-  if (configLoading) {
-    return <LoadingOverlay visible />;
-  }
+  useEffect(() => {
+    if (config?.firstSetup) navigate('/auth/setup');
+  }, [config]);
 
-  if (configError) {
-    return (
-      <Center h='100vh'>
-        <Text c='red'>Failed to load configuration. Please try again later.</Text>
-      </Center>
-    );
-  }
+  if (configLoading) return <LoadingOverlay visible />;
 
-  if (!config) {
+  if (configError)
     return (
-      <Center h='100vh'>
-        <Text c='red'>Configuration is not available. Please try again later.</Text>
-      </Center>
+      <GenericError
+        title='Error loading configuration'
+        message='Could not load server configuration...'
+        details={configError}
+      />
     );
-  }
+
+  if (!config) return <LoadingOverlay visible />;
 
   return (
     <>

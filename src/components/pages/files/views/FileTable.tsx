@@ -39,11 +39,12 @@ import {
 } from '@tabler/icons-react';
 import { DataTable } from 'mantine-datatable';
 import { useEffect, useReducer, useState } from 'react';
+import { Link } from 'react-router-dom';
 import useSWR from 'swr';
 import { bulkDelete, bulkFavorite } from '../bulk';
 import TagPill from '../tags/TagPill';
 import { useApiPagination } from '../useApiPagination';
-import { Link } from 'react-router-dom';
+import { useQueryState } from '@/lib/hooks/useQueryState';
 
 type ReducerQuery = {
   state: { name: string; originalName: string; type: string; tags: string; id: string };
@@ -185,8 +186,7 @@ export default function FileTable({ id }: { id?: string }) {
     '/api/user/folders?noincl=true',
   );
 
-  // const [page, setPage] = useQueryState('page', parseAsInteger.withDefault(1));
-  const [page, setPage] = useState(1);
+  const [page, setPage] = useQueryState('page', 1);
   const [perpage, setPerpage] = useState(20);
   const [sort, setSort] = useState<
     | 'id'

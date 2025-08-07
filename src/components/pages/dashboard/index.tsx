@@ -15,7 +15,6 @@ export default function DashboardHome() {
   const { user } = useLogin();
   const { data: recent, isLoading: recentLoading } = useSWR<Response['/api/user/recent']>('/api/user/recent');
   const { data: stats, isLoading: statsLoading } = useSWR<Response['/api/user/stats']>('/api/user/stats');
-
   return (
     <>
       <Title>

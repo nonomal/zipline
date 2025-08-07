@@ -20,21 +20,7 @@ const initialData = (window as any)[ZIPLINE_SSR_PROP];
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <ZiplineSSRProvider ssrData={initialData}>
-      <RouterProvider
-        // router={createBrowserRouter([
-        //   {
-        //     path: '/view',
-        //     Component: () => <Root />,
-        //     children: [
-        //       {
-        //         path: ':id',
-        //         Component: () => <ViewFileId />,
-        //       },
-        //     ],
-        //   },
-        // ])}
-        router={router}
-      />
+      <RouterProvider router={router} />
     </ZiplineSSRProvider>
   </StrictMode>,
 );

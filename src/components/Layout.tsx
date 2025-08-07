@@ -49,7 +49,7 @@ import { useState } from 'react';
 import ConfigProvider from './ConfigProvider';
 import VersionBadge from './VersionBadge';
 import { Link, useLoaderData } from 'react-router-dom';
-import { dashboardLoader } from '../../client/routes';
+import { dashboardLoader } from '../client/routes';
 
 type NavLinks = {
   label: string;

@@ -18,12 +18,13 @@ import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
 import { IconLogin, IconPlus, IconUserPlus, IconX } from '@tabler/icons-react';
 import { useEffect, useState } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, redirect, useLocation, useNavigate } from 'react-router-dom';
 import useSWR, { mutate } from 'swr';
+import GenericError from '../../error/GenericError';
 
 export default function Register() {
-  const navigate = useNavigate();
   const location = useLocation();
+  const navigate = useNavigate();
 
   const [loading, setLoading] = useState(true);
   const [invite, setInvite] = useState<any>(null);
@@ -53,19 +54,17 @@ export default function Register() {
     },
   });
 
-  // Check if already logged in
   useEffect(() => {
     (async () => {
       const res = await fetch('/api/user');
       if (res.ok) {
-        navigate('/auth/login');
+        redirect('/dashboard');
       } else {
         setLoading(false);
       }
     })();
   }, []);
 
-  // Fetch invite if present
   useEffect(() => {
     (async () => {
       if (!code) return;
@@ -75,13 +74,13 @@ export default function Register() {
         const json = await res.json();
         setInvite(json.invite);
       } else {
-        navigate('/auth/login');
+        redirect('/auth/login');
       }
     })();
   }, [code]);
 
   useEffect(() => {
-    if (!code && !config?.features.userRegistration) {
+    if (!config?.features.userRegistration) {
       navigate('/auth/login');
     }
   }, [code, config]);
@@ -120,24 +119,19 @@ export default function Register() {
       });
 
       mutate('/api/user');
-      navigate('/dashboard');
+      redirect('/dashboard');
     }
   };
 
-  if (loading) return <LoadingOverlay visible />;
+  if (loading || configLoading) return <LoadingOverlay visible />;
 
-  if (!config || configError || configLoading) {
+  if (!config || configError) {
     return (
-      <Center h='100vh'>
-        <Paper p='xl' shadow='xl' withBorder>
-          <Title order={2} ta='center'>
-            Failed to load configuration
-          </Title>
-          <Text ta='center' size='sm' c='dimmed'>
-            Please try again later.
-          </Text>
-        </Paper>
-      </Center>
+      <GenericError
+        title='Error loading configuration'
+        message='Could not load server configuration...'
+        details={configError}
+      />
     );
   }
 

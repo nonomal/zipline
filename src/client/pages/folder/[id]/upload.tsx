@@ -20,7 +20,7 @@ export default function ViewFolderIdUpload() {
 
   return (
     <>
-      <Container>
+      <Container my='lg'>
         <ConfigProvider data={{ config: config as unknown as SafeConfig, codeMap: [] }}>
           <UploadFile title={`Upload files to ${folder.name}`} folder={folder.id} />
           <Center>

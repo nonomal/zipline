@@ -7,9 +7,9 @@ export default defineConfig(({ mode }) => {
   if (mode === 'development')
     return {
       plugins: [react()],
-      root: 'client',
+      root: './src/client',
       build: {
-        outDir: '../build/client',
+        outDir: '../../build/client',
         rollupOptions: {
           output: {
             format: 'cjs',
@@ -28,18 +28,15 @@ export default defineConfig(({ mode }) => {
 
   return {
     plugins: [react()],
-    root: 'client',
+    root: './src/client',
     build: {
-      outDir: '../build/client',
+      outDir: '../../build/client',
       emptyOutDir: true,
-      sourcemap: true,
-      minify: false,
-
       rollupOptions: {
         input: {
-          main: path.resolve(__dirname, 'client/index.html'),
-          'ssr-view': path.resolve(__dirname, 'client/ssr-view/index.html'),
-          'ssr-view-url': path.resolve(__dirname, 'client/ssr-view-url/index.html'),
+          main: path.resolve(__dirname, 'src/client/index.html'),
+          'ssr-view': path.resolve(__dirname, 'src/client/ssr-view/index.html'),
+          'ssr-view-url': path.resolve(__dirname, 'src/client/ssr-view-url/index.html'),
         },
         ...(mode.startsWith('ssr') && {
           output: {
@@ -57,5 +54,3 @@ export default defineConfig(({ mode }) => {
     },
   };
 });
-
-console.log('Vite configuration loaded');

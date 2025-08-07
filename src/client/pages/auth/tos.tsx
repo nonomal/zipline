@@ -1,0 +1,36 @@
+import Markdown from '@/components/render/Markdown';
+import { Response } from '@/lib/api/response';
+import { Container, LoadingOverlay } from '@mantine/core';
+import useSWR from 'swr';
+import GenericError from '../../error/GenericError';
+
+export default function Tos() {
+  const {
+    data: config,
+    error,
+    isLoading,
+  } = useSWR<Response['/api/server/public']>('/api/server/public', {
+    revalidateOnFocus: false,
+    revalidateOnReconnect: false,
+    refreshWhenHidden: false,
+    revalidateIfStale: false,
+  });
+
+  if (isLoading) return <LoadingOverlay visible />;
+
+  if (error) {
+    return (
+      <GenericError
+        title='Error loading TOS'
+        message='Could not load Terms of Service file...'
+        details={error}
+      />
+    );
+  }
+
+  return (
+    <Container my='lg'>
+      <Markdown md={config?.tos || ''} />
+    </Container>
+  );
+}

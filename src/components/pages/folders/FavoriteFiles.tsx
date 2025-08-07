@@ -1,4 +1,5 @@
 import DashboardFile from '@/components/file/DashboardFile';
+import { useQueryState } from '@/lib/hooks/useQueryState';
 import {
   Accordion,
   Button,
@@ -12,12 +13,11 @@ import {
   Title,
 } from '@mantine/core';
 import { IconFileUpload, IconFilesOff } from '@tabler/icons-react';
-import { useApiPagination } from '../files/useApiPagination';
 import { Link } from 'react-router-dom';
-import { useState } from 'react';
+import { useApiPagination } from '../files/useApiPagination';
 
 export default function FavoriteFiles() {
-  const [page, setPage] = useState(1);
+  const [page, setPage] = useQueryState('fpage', 1);
   const { data, isLoading } = useApiPagination({
     page,
     favorite: true,

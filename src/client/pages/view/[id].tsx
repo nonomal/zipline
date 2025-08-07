@@ -24,7 +24,7 @@ import { IconDownload, IconExternalLink, IconInfoCircleFilled } from '@tabler/ic
 import * as sanitize from 'isomorphic-dompurify';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useSsrData } from '../../../src/components/ZiplineSSRProvider';
+import { useSsrData } from '../../../components/ZiplineSSRProvider';
 import { getFile } from '../../ssr-view/server';
 
 type SsrData = {

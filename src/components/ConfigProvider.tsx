@@ -1,5 +1,5 @@
 import { createContext, useContext } from 'react';
-import { dashboardLoader } from '../../client/routes';
+import { dashboardLoader } from '../client/routes';
 
 type ConfigContextType = Awaited<ReturnType<typeof dashboardLoader>>;
 

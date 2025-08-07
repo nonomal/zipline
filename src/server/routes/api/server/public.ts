@@ -1,5 +1,6 @@
 import { config } from '@/lib/config';
 import { Config } from '@/lib/config/validate';
+import { getZipline } from '@/lib/db/models/zipline';
 import { log } from '@/lib/logger';
 import enabled from '@/lib/oauth/enabled';
 import fastifyPlugin from 'fastify-plugin';
@@ -33,6 +34,7 @@ export type ApiServerPublicResponse = {
     maxFileSize: string;
   };
   chunks: Config['chunks'];
+  firstSetup: boolean;
 };
 
 const logger = log('api').c('server').c('public');
@@ -43,6 +45,8 @@ export const PATH = '/api/server/public';
 export default fastifyPlugin(
   (server, _, done) => {
     server.get<{ Body: Body }>(PATH, async (req, res) => {
+      const zipline = await getZipline();
+
       const response: ApiServerPublicResponse = {
         oauth: {
           bypassLocalLogin: config.oauth.bypassLocalLogin,
@@ -65,6 +69,7 @@ export default fastifyPlugin(
           maxFileSize: config.files.maxFileSize,
         },
         chunks: config.chunks,
+        firstSetup: zipline.firstSetup,
       };
 
       if (config.website.tos) {

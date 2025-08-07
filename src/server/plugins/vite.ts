@@ -19,6 +19,7 @@ async function vitePlugin(fastify: FastifyInstance) {
 
   if (MODE === 'production') {
     fastify.decorate('serveIndex', route);
+    fastify.decorateReply('serveIndex', serveIndex);
 
     await fastify.register(fastifyStatic, {
       root: resolve('./build/client'),
@@ -61,7 +62,7 @@ async function vitePlugin(fastify: FastifyInstance) {
       let render: (response: any, url: string) => Promise<ReturnType<typeof renderHtml>>;
 
       if (MODE === 'development' && fastify.vite) {
-        template = await readFile(resolve(`./client/ssr-${type}/`, 'index.html'), 'utf-8');
+        template = await readFile(resolve(`./src/client/ssr-${type}/`, 'index.html'), 'utf-8');
         template = await fastify.vite.transformIndexHtml(url, template);
         render = (await fastify.vite.ssrLoadModule(`/ssr-${type}/server.tsx`)).render;
       } else {
@@ -101,9 +102,12 @@ async function vitePlugin(fastify: FastifyInstance) {
     });
 
     async function handler(_: FastifyRequest, reply: FastifyReply) {
-      const template = await readFile(resolve('./build/client', 'index.html'), 'utf8');
-      reply.type('text/html').send(template);
+      return reply.serveIndex();
     }
+  }
+
+  async function serveIndex(this: FastifyReply) {
+    return this.sendFile('index.html', resolve('./build/client'));
   }
 }
 
@@ -120,5 +124,6 @@ declare module 'fastify' {
 
   interface FastifyReply {
     ssr: (type: 'view-url' | 'view') => Promise<void>;
+    serveIndex: () => Promise<void>;
   }
 }

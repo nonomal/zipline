@@ -10,7 +10,7 @@ export default function ViewFolderId() {
 
   return (
     <>
-      <Container>
+      <Container my='lg'>
         <Group>
           <Title order={1}>{folder.name}</Title>
 
