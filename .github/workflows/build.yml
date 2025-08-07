@@ -38,9 +38,9 @@ jobs:
           path: |
             ${{ steps.pnpm-cache.outputs.store_path }}
             ${{ github.workspace }}/.next/cache
-          key: ${{ runner.os }}-pnpm-next-store-${{ hashFiles('**/pnpm-lock.yaml') }}-${{ hashFiles('**/*.js', '**/*.jsx', '**/*.ts', '**/*.tsx') }}
+          key: ${{ runner.os }}-${{ matrix.arch }}-${{ matrix.node }}-pnpm-next-store-${{ hashFiles('**/pnpm-lock.yaml') }}-${{ hashFiles('**/*.js', '**/*.jsx', '**/*.ts', '**/*.tsx') }}
           restore-keys: |
-            ${{ runner.os }}-pnpm-next-store-${{ hashFiles('**/package-lock.json') }}-
+            ${{ runner.os }}-${{ matrix.arch }}-${{ matrix.node }}-pnpm-next-store-${{ hashFiles('**/package-lock.json') }}-
 
       - name: Install
         run: pnpm install
