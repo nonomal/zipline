@@ -39,7 +39,7 @@ jobs:
             ${{ steps.pnpm-cache.outputs.store_path }}
           key: ${{ runner.os }}-${{ matrix.arch }}-${{ matrix.node }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}-${{ hashFiles('**/*.js', '**/*.jsx', '**/*.ts', '**/*.tsx') }}
           restore-keys: |
-            ${{ runner.os }}-${{ matrix.arch }}-${{ matrix.node }}-pnpm-store-${{ hashFiles('**/package-lock.json') }}-
+            ${{ runner.os }}-${{ matrix.arch }}-${{ matrix.node }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}-
 
       - name: Install
         run: pnpm install
