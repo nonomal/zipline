@@ -1,7 +1,7 @@
+import { ApiServerSettingsWebResponse } from '@/server/routes/api/server/settings';
 import { createContext, useContext } from 'react';
-import { dashboardLoader } from '../client/routes';
 
-type ConfigContextType = Awaited<ReturnType<typeof dashboardLoader>>;
+type ConfigContextType = ApiServerSettingsWebResponse;
 
 const ConfigContext = createContext<ConfigContextType | null>(null);
 

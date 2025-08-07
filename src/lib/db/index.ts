@@ -1,6 +1,6 @@
-import { log } from '../logger';
+import { log } from '@/lib/logger';
 import { PrismaPg } from '@prisma/adapter-pg';
-import { type Prisma } from '@/prisma/client';
+import { type Prisma, PrismaClient } from '@/prisma/client';
 import { metadataSchema } from './models/incompleteFile';
 import { metricDataSchema } from './models/metric';
 import { userViewSchema } from './models/user';
@@ -34,7 +34,7 @@ function parseDbLog(env: string): Prisma.LogLevel[] {
 function getClient() {
   const logger = log('db');
 
-  const { PrismaClient } = require('../../prisma/client');
+  // const { PrismaClient } = require('../../prisma/client');
 
   logger.info('connecting to database ' + process.env.DATABASE_URL);
 

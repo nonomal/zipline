@@ -45,8 +45,14 @@ jobs:
       - name: Install
         run: pnpm install
 
+      - name: Lint
+        run: pnpm lint
+
+      - name: Type Check
+        run: pnpm build:types
+
       - name: Build
         env:
           ZIPLINE_BUILD: 'true'
           NEXT_TELEMETRY_DISABLED: '1'
-        run: pnpm build
+        run: pnpm build:skip

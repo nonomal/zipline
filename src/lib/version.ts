@@ -1,4 +1,4 @@
-import { version } from '../../package.json' with { type: 'json' };
+import { version } from '../../package.json';
 import { execSync } from 'child_process';
 
 export function gitSha() {

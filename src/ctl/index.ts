@@ -1,5 +1,5 @@
 import { Command } from 'commander';
-import { version } from '../../package.json' with { type: 'json' };
+import { version } from '../../package.json';
 import { listUsers } from './commands/list-users';
 import { readConfig } from './commands/read-config';
 import { setUser } from './commands/set-user';
