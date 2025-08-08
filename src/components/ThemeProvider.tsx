@@ -32,11 +32,7 @@ export default function ThemeProvider({
   ssrDefaultTheme?: Config['website']['theme'];
   children: React.ReactNode;
 }) {
-  const {
-    data: clientThemes,
-    error,
-    isLoading,
-  } = useSWR<Response['/api/server/themes']>('/api/server/themes', {
+  const { data: clientThemes } = useSWR<Response['/api/server/themes']>('/api/server/themes', {
     revalidateOnFocus: false,
     revalidateOnReconnect: false,
     refreshWhenHidden: false,
