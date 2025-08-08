@@ -11,11 +11,6 @@ export default defineConfig(({ mode }) => {
       root: './src/client',
       build: {
         outDir: '../../build/client',
-        rollupOptions: {
-          output: {
-            format: 'cjs',
-          },
-        },
       },
       server: {
         middlewareMode: true,

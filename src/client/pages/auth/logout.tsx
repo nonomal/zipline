@@ -1,3 +1,4 @@
+import { useTitle } from '@/lib/hooks/useTitle';
 import { useUserStore } from '@/lib/store/user';
 import { LoadingOverlay } from '@mantine/core';
 import { useEffect } from 'react';
@@ -5,6 +6,8 @@ import { useNavigate } from 'react-router-dom';
 import { mutate } from 'swr';
 
 export default function Logout() {
+  useTitle('Log out');
+
   const setUser = useUserStore((state) => state.setUser);
   const navigate = useNavigate();
 

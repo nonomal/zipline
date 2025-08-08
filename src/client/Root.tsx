@@ -30,8 +30,15 @@ export default function Root({
       }}
     >
       <ThemeProvider ssrThemes={themes} ssrDefaultTheme={defaultTheme}>
-        <ModalsProvider>
-          <Notifications />
+        <ModalsProvider
+          modalProps={{
+            overlayProps: {
+              blur: 6,
+            },
+            centered: true,
+          }}
+        >
+          <Notifications zIndex={10000000} />
           <Outlet />
         </ModalsProvider>
       </ThemeProvider>

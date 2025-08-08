@@ -1,16 +1,14 @@
+import { type loader } from '@/client/pages/dashboard/admin/users/[id]/files';
 import GridTableSwitcher from '@/components/GridTableSwitcher';
-import { User } from '@/lib/db/models/user';
 import { useViewStore } from '@/lib/store/view';
 import { ActionIcon, Group, Title, Tooltip } from '@mantine/core';
-import FileTable from '../files/views/FileTable';
-import Files from '../files/views/Files';
 import { IconArrowBackUp } from '@tabler/icons-react';
 import { Link, useLoaderData } from 'react-router-dom';
+import FileTable from '../files/views/FileTable';
+import Files from '../files/views/Files';
 
 export default function ViewUserFiles() {
-  const data = useLoaderData<{
-    user: User;
-  }>();
+  const data = useLoaderData<typeof loader>();
   if (!data) return null;
 
   const { user } = data;

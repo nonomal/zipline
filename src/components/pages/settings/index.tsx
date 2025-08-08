@@ -3,16 +3,18 @@ import { eitherTrue } from '@/lib/primitive';
 import { isAdministrator } from '@/lib/role';
 import { useUserStore } from '@/lib/store/user';
 import { Group, SimpleGrid, Title } from '@mantine/core';
-import SettingsAvatar from './parts/SettingsAvatar';
-import SettingsDashboard from './parts/SettingsDashboard';
-import SettingsFileView from './parts/SettingsFileView';
-import SettingsGenerators from './parts/SettingsGenerators';
-import SettingsMfa from './parts/SettingsMfa';
-import SettingsOAuth from './parts/SettingsOAuth';
-import SettingsServerActions from './parts/SettingsServerUtil';
-import SettingsUser from './parts/SettingsUser';
-import SettingsExports from './parts/SettingsExports';
-import SettingsSessions from './parts/SettingsSessions';
+import { lazy } from 'react';
+
+const SettingsAvatar = lazy(() => import('./parts/SettingsAvatar'));
+const SettingsDashboard = lazy(() => import('./parts/SettingsDashboard'));
+const SettingsFileView = lazy(() => import('./parts/SettingsFileView'));
+const SettingsGenerators = lazy(() => import('./parts/SettingsGenerators'));
+const SettingsMfa = lazy(() => import('./parts/SettingsMfa'));
+const SettingsOAuth = lazy(() => import('./parts/SettingsOAuth'));
+const SettingsServerActions = lazy(() => import('./parts/SettingsServerUtil'));
+const SettingsUser = lazy(() => import('./parts/SettingsUser'));
+const SettingsExports = lazy(() => import('./parts/SettingsExports'));
+const SettingsSessions = lazy(() => import('./parts/SettingsSessions'));
 
 export default function DashboardSettings() {
   const config = useConfig();

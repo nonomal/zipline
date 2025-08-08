@@ -1,6 +1,5 @@
 import { ActionIcon, Tooltip } from '@mantine/core';
 import styles from './ExternalAuthButton.module.css';
-import { Link } from 'react-router-dom';
 
 export default function ExternalAuthButton({
   provider,
@@ -12,8 +11,8 @@ export default function ExternalAuthButton({
   return (
     <Tooltip label={`Continue with ${provider}`}>
       <ActionIcon
-        component={Link}
-        to={`/api/auth/oauth/${provider.toLowerCase()}`}
+        component={'a'}
+        href={`/api/auth/oauth/${provider.toLowerCase()}`}
         color={`${provider.toLowerCase()}.0`}
         className={styles.button}
         p='lg'

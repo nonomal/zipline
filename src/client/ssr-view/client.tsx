@@ -1,4 +1,3 @@
-import '@/components/render/code/HighlightCode.theme.scss';
 import '@mantine/charts/styles.css';
 import '@mantine/core/styles.css';
 import '@mantine/dates/styles.css';

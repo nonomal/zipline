@@ -2,24 +2,28 @@ import { Response } from '@/lib/api/response';
 import { Alert, Anchor, Collapse, Group, SimpleGrid, Skeleton, Stack, Title } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import useSWR from 'swr';
-import Chunks from './parts/Chunks';
-import Core from './parts/Core';
-import Discord from './parts/Discord';
-import Domains from './parts/Domains';
-import Features from './parts/Features';
-import Files from './parts/Files';
-import HttpWebhook from './parts/HttpWebhook';
-import Invites from './parts/Invites';
-import Mfa from './parts/Mfa';
-import Oauth from './parts/Oauth';
-import PWA from './parts/PWA';
-import Ratelimit from './parts/Ratelimit';
-import Tasks from './parts/Tasks';
-import Urls from './parts/Urls';
-import Website from './parts/Website';
+import { lazy, Suspense } from 'react';
+
+const Core = lazy(() => import('./parts/Core'));
+const Chunks = lazy(() => import('./parts/Chunks'));
+const Discord = lazy(() => import('./parts/Discord'));
+const Domains = lazy(() => import('./parts/Domains'));
+const Features = lazy(() => import('./parts/Features'));
+const Files = lazy(() => import('./parts/Files'));
+const HttpWebhook = lazy(() => import('./parts/HttpWebhook'));
+const Invites = lazy(() => import('./parts/Invites'));
+const Mfa = lazy(() => import('./parts/Mfa'));
+const Oauth = lazy(() => import('./parts/Oauth'));
+const PWA = lazy(() => import('./parts/PWA'));
+const Ratelimit = lazy(() => import('./parts/Ratelimit'));
+const Tasks = lazy(() => import('./parts/Tasks'));
+const Urls = lazy(() => import('./parts/Urls'));
+const Website = lazy(() => import('./parts/Website'));
 
 function SettingsSkeleton() {
-  return <Skeleton height={280} animate />;
+  return Array(17)
+    .fill(null)
+    .map((_, index) => <Skeleton key={index} height={280} animate />);
 }
 
 export default function DashboardServerSettings() {
@@ -56,7 +60,7 @@ export default function DashboardServerSettings() {
         {error ? (
           <div>Error loading server settings</div>
         ) : (
-          <>
+          <Suspense fallback={<SettingsSkeleton />}>
             <Core swr={{ data, isLoading }} />
             <Chunks swr={{ data, isLoading }} />
             <Tasks swr={{ data, isLoading }} />
@@ -78,7 +82,7 @@ export default function DashboardServerSettings() {
             <HttpWebhook swr={{ data, isLoading }} />
 
             <Domains swr={{ data, isLoading }} />
-          </>
+          </Suspense>
         )}
       </SimpleGrid>
 

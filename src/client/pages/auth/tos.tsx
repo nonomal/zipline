@@ -3,8 +3,11 @@ import { Response } from '@/lib/api/response';
 import { Container, LoadingOverlay } from '@mantine/core';
 import useSWR from 'swr';
 import GenericError from '../../error/GenericError';
+import { useTitle } from '@/lib/hooks/useTitle';
 
-export default function Tos() {
+export function Component() {
+  useTitle('Terms of Service');
+
   const {
     data: config,
     error,
@@ -34,3 +37,5 @@ export default function Tos() {
     </Container>
   );
 }
+
+Component.displayName = 'Tos';

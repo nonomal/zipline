@@ -280,6 +280,7 @@ export default function Layout() {
                   leftSection={<IconSettingsFilled size='1rem' />}
                   component={Link}
                   to='/dashboard/settings'
+                  prefetch='intent'
                 >
                   Settings
                 </Menu.Item>
@@ -289,6 +290,7 @@ export default function Layout() {
                     leftSection={<IconAdjustments size='1rem' />}
                     component={Link}
                     to='/dashboard/admin/settings'
+                    prefetch='intent'
                   >
                     Server Settings
                   </Menu.Item>
@@ -329,6 +331,7 @@ export default function Layout() {
                   active={location.pathname === link.href}
                   component={Link}
                   to={link.href || ''}
+                  prefetch='intent'
                 />
               );
             } else {
@@ -355,6 +358,7 @@ export default function Layout() {
                         active={location.pathname === sublink.href}
                         component={Link}
                         to={sublink.href || ''}
+                        prefetch='intent'
                       />
                     ))}
                 </NavLink>

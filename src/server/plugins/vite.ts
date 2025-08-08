@@ -64,10 +64,12 @@ async function vitePlugin(fastify: FastifyInstance) {
       if (MODE === 'development' && fastify.vite) {
         template = await readFile(resolve(`./src/client/ssr-${type}/`, 'index.html'), 'utf-8');
         template = await fastify.vite.transformIndexHtml(url, template);
+
+        // expose __dirname since dev modules are loaded in esm
+        global.__dirname = __dirname;
         render = (await fastify.vite.ssrLoadModule(`/ssr-${type}/server.tsx`)).render;
       } else {
         template = await readFile(resolve('./build', `client/ssr-${type}/index.html`), 'utf-8');
-        // @ts-ignore
         render = (await import(`../../ssr/ssr-${type}.js`)).render;
       }
 

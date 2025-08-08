@@ -12,11 +12,12 @@ import {
   Title,
 } from '@mantine/core';
 import { IconFileUpload, IconFilesOff } from '@tabler/icons-react';
-import { useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { useApiPagination } from '../useApiPagination';
-import DashboardFile from '@/components/file/DashboardFile';
 import { Link } from 'react-router-dom';
 import { useQueryState } from '@/lib/hooks/useQueryState';
+
+const DashboardFile = lazy(() => import('@/components/file/DashboardFile'));
 
 const PER_PAGE_OPTIONS = [9, 12, 15, 30, 45];
 
@@ -56,7 +57,11 @@ export default function Files({ id }: { id?: string }) {
         {isLoading ? (
           [...Array(9)].map((_, i) => <Skeleton key={i} height={350} animate />)
         ) : (data?.page?.length ?? 0 > 0) ? (
-          data?.page.map((file) => <DashboardFile key={file.id} file={file} />)
+          data?.page.map((file) => (
+            <Suspense fallback={<Skeleton height={350} animate />} key={file.id}>
+              <DashboardFile file={file} />
+            </Suspense>
+          ))
         ) : (
           <Paper withBorder p='sm'>
             <Center>

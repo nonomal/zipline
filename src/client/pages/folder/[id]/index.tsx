@@ -1,12 +1,23 @@
-'use client';
-
-import DashboardFile from '@/components/file/DashboardFile';
-import { ActionIcon, Container, Group, SimpleGrid, Title } from '@mantine/core';
+import { type Response } from '@/lib/api/response';
+import { ActionIcon, Container, Group, SimpleGrid, Skeleton, Title } from '@mantine/core';
 import { IconUpload } from '@tabler/icons-react';
-import { Link, useLoaderData } from 'react-router-dom'; // If using React Router
+import { lazy, Suspense } from 'react';
+import { Link, Params, useLoaderData } from 'react-router-dom';
 
-export default function ViewFolderId() {
-  const { folder } = useLoaderData();
+const DashboardFile = lazy(() => import('@/components/file/DashboardFile'));
+
+export async function loader({ params }: { params: Params<string> }) {
+  const res = await fetch(`/api/server/folder/${params.id}`);
+  if (!res.ok) {
+    throw new Response('Folder not found', { status: 404 });
+  }
+  return {
+    folder: (await res.json()) as Response['/api/server/folder/[id]'],
+  };
+}
+
+export function Component() {
+  const { folder } = useLoaderData<typeof loader>();
 
   return (
     <>
@@ -33,10 +44,14 @@ export default function ViewFolderId() {
           spacing='md'
         >
           {folder.files?.map((file: any) => (
-            <DashboardFile key={file.id} file={file} reduce />
+            <Suspense fallback={<Skeleton height={350} animate />} key={file.id}>
+              <DashboardFile file={file} reduce />
+            </Suspense>
           ))}
         </SimpleGrid>
       </Container>
     </>
   );
 }
+
+Component.displayName = 'ViewFolderId';

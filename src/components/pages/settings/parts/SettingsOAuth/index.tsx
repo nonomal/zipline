@@ -4,9 +4,9 @@ import { fetchApi } from '@/lib/fetchApi';
 import { findProvider } from '@/lib/oauth/providerUtil';
 import { useUserStore } from '@/lib/store/user';
 import { darken } from '@/lib/theme/color';
+import type { OAuthProviderType } from '@/prisma/client';
 import { Button, ButtonProps, Paper, SimpleGrid, Text, Title, useMantineTheme } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
-import type { OAuthProviderType } from '@/prisma/client';
 import {
   IconBrandDiscordFilled,
   IconBrandGithubFilled,
@@ -18,7 +18,6 @@ import {
 import { mutate } from 'swr';
 
 import styles from './index.module.css';
-import { Link } from 'react-router-dom';
 
 const icons = {
   DISCORD: <IconBrandDiscordFilled size='1rem' />,
@@ -76,7 +75,7 @@ function OAuthButton({ provider, linked }: { provider: OAuthProviderType; linked
       Unlink {names[provider]} account
     </Button>
   ) : (
-    <Button {...baseProps} component={Link} to={`/api/auth/oauth/${provider.toLowerCase()}?state=link`}>
+    <Button {...baseProps} component={'a'} href={`/api/auth/oauth/${provider.toLowerCase()}?state=link`}>
       Link {names[provider]} account
     </Button>
   );

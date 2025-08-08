@@ -41,6 +41,8 @@ export function settingsOnSubmit(navigate: NavigateFunction, form: ReturnType<ty
 
       await fetch('/reload');
       mutate('/api/server/settings', data);
+      mutate('/api/server/settings/web');
+      mutate('/api/server/public');
       navigate('/dashboard/admin/settings', { replace: true });
     }
   };

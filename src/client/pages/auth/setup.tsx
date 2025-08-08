@@ -1,5 +1,6 @@
-import { Response } from '@/lib/api/response';
+import { type Response } from '@/lib/api/response';
 import { fetchApi } from '@/lib/fetchApi';
+import { useTitle } from '@/lib/hooks/useTitle';
 import {
   Anchor,
   Button,
@@ -18,7 +19,7 @@ import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
 import { IconArrowBackUp, IconArrowForwardUp, IconCheck, IconX } from '@tabler/icons-react';
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { redirect, useNavigate } from 'react-router-dom';
 import { mutate } from 'swr';
 
 function LinkToDoc({ href, title, children }: { href: string; title: string; children: React.ReactNode }) {
@@ -32,7 +33,21 @@ function LinkToDoc({ href, title, children }: { href: string; title: string; chi
   );
 }
 
-export default function Setup() {
+export async function loader() {
+  const res = await fetch('/api/server/public');
+  if (!res.ok) {
+    throw new Response('Failed to fetch server settings', { status: res.status });
+  }
+
+  const data = await res.json();
+  if (!data.firstSetup) return redirect('/auth/login');
+
+  return {};
+}
+
+export function Component() {
+  useTitle('Setup');
+
   const navigate = useNavigate();
 
   const [active, setActive] = useState(0);
@@ -230,3 +245,5 @@ export default function Setup() {
     </>
   );
 }
+
+Component.displayName = 'Setup';

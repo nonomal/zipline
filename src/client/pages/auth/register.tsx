@@ -21,8 +21,11 @@ import { useEffect, useState } from 'react';
 import { Link, redirect, useLocation, useNavigate } from 'react-router-dom';
 import useSWR, { mutate } from 'swr';
 import GenericError from '../../error/GenericError';
+import { useTitle } from '@/lib/hooks/useTitle';
 
-export default function Register() {
+export function Component() {
+  useTitle('Register');
+
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -253,3 +256,5 @@ export default function Register() {
     </Center>
   );
 }
+
+Component.displayName = 'Register';

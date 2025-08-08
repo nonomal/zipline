@@ -1,5 +1,4 @@
 import RelativeDate from '@/components/RelativeDate';
-import FileModal from '@/components/file/DashboardFile/FileModal';
 import { addMultipleToFolder, copyFile, deleteFile, downloadFile } from '@/components/file/actions';
 import { Response } from '@/lib/api/response';
 import { bytes } from '@/lib/bytes';
@@ -38,13 +37,15 @@ import {
   IconTrashFilled,
 } from '@tabler/icons-react';
 import { DataTable } from 'mantine-datatable';
-import { useEffect, useReducer, useState } from 'react';
+import { lazy, useEffect, useReducer, useState } from 'react';
 import { Link } from 'react-router-dom';
 import useSWR from 'swr';
 import { bulkDelete, bulkFavorite } from '../bulk';
 import TagPill from '../tags/TagPill';
 import { useApiPagination } from '../useApiPagination';
 import { useQueryState } from '@/lib/hooks/useQueryState';
+
+const FileModal = lazy(() => import('@/components/file/DashboardFile/FileModal'));
 
 type ReducerQuery = {
   state: { name: string; originalName: string; type: string; tags: string; id: string };

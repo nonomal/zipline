@@ -35,8 +35,11 @@ import { useEffect, useState } from 'react';
 import { Link, redirect, useLocation, useNavigate } from 'react-router-dom';
 import useSWR from 'swr';
 import GenericError from '../../error/GenericError';
+import { useTitle } from '@/lib/hooks/useTitle';
 
 export default function Login() {
+  useTitle('Login');
+
   const location = useLocation();
   const query = new URLSearchParams(location.search);
   const { user, mutate } = useLogin();
