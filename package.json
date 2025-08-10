@@ -2,7 +2,7 @@
   "name": "zipline",
   "private": true,
   "license": "MIT",
-  "version": "4.2.2",
+  "version": "4.2.3",
   "scripts": {
     "lint": "eslint .",
     "build:skip": "pnpm run --stream build:prisma && pnpm run --stream build:server && pnpm run --stream build:client",
