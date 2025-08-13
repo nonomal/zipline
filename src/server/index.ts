@@ -135,11 +135,11 @@ async function main() {
     }
   }
 
-  server.get<{ Params: { id: string } }>('/view/:id', async (req, res) => {
+  server.get<{ Params: { id: string } }>('/view/:id', async (_req, res) => {
     return res.ssr('view');
   });
 
-  server.get<{ Params: { id: string } }>('/view/url/:id', async (req, res) => {
+  server.get<{ Params: { id: string } }>('/view/url/:id', async (_req, res) => {
     return res.ssr('view-url');
   });
 
@@ -174,8 +174,9 @@ async function main() {
     server.serveIndex('/dashboard*');
     server.serveIndex('/auth*');
     server.serveIndex('/folder*');
-    server.get('/', (_, res) => res.redirect('/dashboard', 301));
   }
+
+  server.get('/', (_, res) => res.redirect('/dashboard', 301));
 
   server.setNotFoundHandler((req, res) => {
     if (req.url.startsWith('/api/')) {

@@ -1,5 +1,5 @@
 import { bytes } from '@/lib/bytes';
-import { config, reloadSettings } from '@/lib/config';
+import { reloadSettings } from '@/lib/config';
 import type { readDatabaseSettings } from '@/lib/config/read/db';
 import { safeConfig } from '@/lib/config/safe';
 import { prisma } from '@/lib/db';
@@ -10,10 +10,9 @@ import { administratorMiddleware } from '@/server/middleware/administrator';
 import { userMiddleware } from '@/server/middleware/user';
 import fastifyPlugin from 'fastify-plugin';
 import { statSync } from 'fs';
-import { readFile } from 'fs/promises';
 import ms, { StringValue } from 'ms';
 import { cpus } from 'os';
-import { join, resolve } from 'path';
+import { resolve } from 'path';
 import { z } from 'zod';
 
 type Settings = Awaited<ReturnType<typeof readDatabaseSettings>>;
@@ -71,20 +70,6 @@ const logger = log('api').c('server').c('settings');
 export const PATH = '/api/server/settings';
 export default fastifyPlugin(
   (server, _, done) => {
-    server.get(PATH + '/web', { preHandler: [userMiddleware] }, async (_, res) => {
-      const webConfig = safeConfig(config);
-
-      const codeJson = await readFile(join(process.cwd(), 'code.json'));
-      const codeMap = JSON.parse(codeJson.toString());
-
-      const data: ApiServerSettingsWebResponse = {
-        config: webConfig,
-        codeMap: codeMap,
-      };
-
-      return res.send(data);
-    });
-
     server.get<{ Body: Body }>(
       PATH,
       {

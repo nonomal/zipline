@@ -9,6 +9,7 @@ import { readFile } from 'fs/promises';
 export type ApiServerPublicResponse = {
   oauth: {
     bypassLocalLogin: boolean;
+    loginOnly: boolean;
   };
   oauthEnabled: {
     discord: boolean;
@@ -50,6 +51,7 @@ export default fastifyPlugin(
       const response: ApiServerPublicResponse = {
         oauth: {
           bypassLocalLogin: config.oauth.bypassLocalLogin,
+          loginOnly: config.oauth.loginOnly,
         },
         oauthEnabled: enabled(config),
         website: {

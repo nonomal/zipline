@@ -73,7 +73,7 @@ export default function PWA({
   }, [data]);
 
   return (
-    <Paper withBorder p='sm' pos='relative'>
+    <Paper withBorder p='sm' pos='relative' h='100%'>
       <LoadingOverlay visible={isLoading} />
 
       <Title order={2}>PWA</Title>

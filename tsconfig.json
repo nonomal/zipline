@@ -15,7 +15,7 @@
     "jsx": "preserve",
     "incremental": true,
     "paths": {
-      "@/*": ["./src/*", "./generated/*"]
+      "@/*": ["./src/*"]
     }
   },
   "include": ["vite-env.d.ts", "**/*.ts", "**/*.tsx"],

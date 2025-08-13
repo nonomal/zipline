@@ -120,7 +120,7 @@ export default function Ratelimit({
           <TextInput
             label='Allow List'
             description='A comma-separated list of IP addresses to bypass the ratelimit.'
-            placeholder='1.1.1.1, 8.8.8.8'
+            placeholder='192.168.1.1, 127.0.0.1, 0.0.0.0'
             {...form.getInputProps('ratelimitAllowList')}
           />
         </SimpleGrid>

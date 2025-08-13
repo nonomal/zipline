@@ -31,12 +31,7 @@ export default function UserCard({ user }: { user: User }) {
                 {user.username[0].toUpperCase()}
               </Avatar>
 
-              <Stack gap={1}>
-                <Text fw={400}>{user.username}</Text>
-                <Text size='xs' c='dimmed'>
-                  {user.id}
-                </Text>
-              </Stack>
+              <Text fw={400}>{user.username}</Text>
             </Group>
 
             <Group gap='xs'>
@@ -79,6 +74,9 @@ export default function UserCard({ user }: { user: User }) {
 
         <Card.Section inheritPadding py='xs'>
           <Stack gap={1}>
+            <Text size='xs' c='dimmed'>
+              <b>Id:</b> {user.id}
+            </Text>
             <Text size='xs' c='dimmed'>
               <b>Role:</b> {roleName(user.role)}
             </Text>

@@ -2,7 +2,8 @@ import { Response } from '@/lib/api/response';
 import { Alert, Anchor, Collapse, Group, SimpleGrid, Skeleton, Stack, Title } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import useSWR from 'swr';
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, useMemo } from 'react';
+import { useQueryState } from '@/lib/hooks/useQueryState';
 
 const Core = lazy(() => import('./parts/Core'));
 const Chunks = lazy(() => import('./parts/Chunks'));
@@ -30,6 +31,41 @@ export default function DashboardServerSettings() {
   const { data, isLoading, error } = useSWR<Response['/api/server/settings']>('/api/server/settings');
   const [opened, { toggle }] = useDisclosure(false);
 
+  const scrollToSetting = useMemo(() => {
+    return (setting: string) => {
+      console.log('scrolling to setting:', setting);
+      const input = document.querySelector<HTMLInputElement>(`[data-path="${setting}"]`);
+      if (input) {
+        const observer = new IntersectionObserver(
+          (entries) => {
+            if (entries[0].isIntersecting) {
+              observer.disconnect();
+              const parent = input.parentElement?.parentElement;
+              if (parent) {
+                parent.style.transition = 'transform 0.35s';
+                parent.style.transform = 'scale(1.2)';
+                setTimeout(() => {
+                  parent.style.transform = 'scale(1)';
+                }, 350);
+              }
+            }
+          },
+          { threshold: 1.0 },
+        );
+        observer.observe(input);
+
+        input.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        input.focus();
+      }
+    };
+  }, []);
+
+  const onTamperedClick = (e: React.MouseEvent<HTMLAnchorElement>, setting: string) => {
+    e.preventDefault();
+
+    scrollToSetting(setting);
+  };
+
   return (
     <>
       <Group gap='sm'>
@@ -49,7 +85,9 @@ export default function DashboardServerSettings() {
           <Collapse in={opened} transitionDuration={200}>
             <ul>
               {data!.tampered.map((setting) => (
-                <li key={setting}>{setting}</li>
+                <li key={setting}>
+                  <Anchor onClick={(e) => onTamperedClick(e, setting)}>{setting}</Anchor>
+                </li>
               ))}
             </ul>
           </Collapse>
@@ -74,10 +112,11 @@ export default function DashboardServerSettings() {
             </Stack>
 
             <Ratelimit swr={{ data, isLoading }} />
-            <Website swr={{ data, isLoading }} />
+            <Stack>
+              <Website swr={{ data, isLoading }} />
+              <PWA swr={{ data, isLoading }} />
+            </Stack>
             <Oauth swr={{ data, isLoading }} />
-
-            <PWA swr={{ data, isLoading }} />
 
             <HttpWebhook swr={{ data, isLoading }} />
 
