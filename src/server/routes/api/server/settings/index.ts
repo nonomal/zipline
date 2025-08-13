@@ -308,11 +308,18 @@ export default fastifyPlugin(
             pwaTitle: z.string(),
             pwaShortName: z.string(),
             pwaDescription: z.string(),
-            pwaThemeColor: z.string().regex(/^#?([a-f0-9]{6}|[a-f0-9]{3})$/),
-            pwaBackgroundColor: z.string().regex(/^#?([a-f0-9]{6}|[a-f0-9]{3})/),
+            pwaThemeColor: z.string().regex(/^#?([a-f0-9]{6}|[a-f0-9]{3})$/, 'Invalid Color'),
+            pwaBackgroundColor: z.string().regex(/^#?([a-f0-9]{6}|[a-f0-9]{3})/, 'Invalid Color'),
 
             domains: z.union([
-              z.array(z.string()),
+              z.array(
+                z
+                  .string()
+                  .regex(
+                    /^[a-zA-Z0-9][a-zA-Z0-9-_]{0,61}[a-zA-Z0-9]{0,1}\.([a-zA-Z]{1,6}|[a-zA-Z0-9-]{1,30}\.[a-zA-Z]{2,3})$/gi,
+                    'Invalid Domain',
+                  ),
+              ),
               z.string().transform((value) => value.split(',').map((s) => s.trim())),
             ]),
           })

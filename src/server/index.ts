@@ -21,7 +21,6 @@ import { fastifyStatic } from '@fastify/static';
 import fastify from 'fastify';
 import { mkdir, readFile } from 'fs/promises';
 import ms, { StringValue } from 'ms';
-import { createServer as createViteServer } from 'vite';
 import { version } from '../../package.json';
 import { checkRateLimit } from './plugins/checkRateLimit';
 import oauthPlugin from './plugins/oauth';
@@ -272,7 +271,6 @@ main();
 declare module 'fastify' {
   interface FastifyInstance {
     tasks: Tasks;
-    vite?: Awaited<ReturnType<typeof createViteServer>>;
   }
 }
 
