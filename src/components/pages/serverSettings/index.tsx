@@ -3,7 +3,6 @@ import { Alert, Anchor, Collapse, Group, SimpleGrid, Skeleton, Stack, Title } fr
 import { useDisclosure } from '@mantine/hooks';
 import useSWR from 'swr';
 import { lazy, Suspense, useMemo } from 'react';
-import { useQueryState } from '@/lib/hooks/useQueryState';
 
 const Core = lazy(() => import('./parts/Core'));
 const Chunks = lazy(() => import('./parts/Chunks'));
