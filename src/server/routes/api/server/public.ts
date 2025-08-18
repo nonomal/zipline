@@ -33,9 +33,11 @@ export type ApiServerPublicResponse = {
   tos?: string | null;
   files: {
     maxFileSize: string;
+    defaultFormat: Config['files']['defaultFormat'];
   };
   chunks: Config['chunks'];
   firstSetup: boolean;
+  domains?: string[];
 };
 
 const logger = log('api').c('server').c('public');
@@ -69,9 +71,11 @@ export default fastifyPlugin(
         },
         files: {
           maxFileSize: config.files.maxFileSize,
+          defaultFormat: config.files.defaultFormat,
         },
         chunks: config.chunks,
         firstSetup: zipline.firstSetup,
+        domains: config.domains,
       };
 
       if (config.website.tos) {

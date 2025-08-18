@@ -1,4 +1,6 @@
 import { Container, Paper, Stack, Text, Title } from '@mantine/core';
+import { useRouteError } from 'react-router-dom';
+import FourOhFour from '../pages/404';
 
 export default function GenericError({
   title,
@@ -9,6 +11,10 @@ export default function GenericError({
   message?: string;
   details?: Record<string, any>;
 }) {
+  const routeError: any = useRouteError();
+
+  if (routeError?.status === 404) return <FourOhFour />;
+
   return (
     <Container my='lg'>
       <Stack gap='xs'>
@@ -18,7 +24,7 @@ export default function GenericError({
         </Text>
         {details && (
           <Paper withBorder px={3} py={3}>
-            <pre style={{ margin: 0 }}>{JSON.stringify(details, null, 2)}</pre>
+            <pre style={{ margin: 0 }}>{JSON.stringify({ routeError, details }, null, 2)}</pre>
           </Paper>
         )}
       </Stack>

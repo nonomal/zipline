@@ -51,7 +51,6 @@ export const DATABASE_TO_PROP = {
 
   invitesEnabled: 'invites.enabled',
   invitesLength: 'invites.length',
-  domains: 'domains',
 
   websiteTitle: 'website.title',
   websiteTitleLogo: 'website.titleLogo',
@@ -60,6 +59,8 @@ export const DATABASE_TO_PROP = {
   websiteLoginBackgroundBlur: 'website.loginBackgroundBlur',
   websiteDefaultAvatar: 'website.defaultAvatar',
   websiteTos: 'website.tos',
+
+  domains: 'domains',
 
   websiteThemeDefault: 'website.theme.default',
   websiteThemeDark: 'website.theme.dark',

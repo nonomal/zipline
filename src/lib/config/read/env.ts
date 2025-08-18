@@ -75,6 +75,8 @@ export const ENVS = [
   env('features.versionChecking', 'FEATURES_VERSION_CHECKING', 'boolean', true),
   env('features.versionAPI', 'FEATURES_VERSION_API', 'string', true),
 
+  env('domains', 'DOMAINS', 'string[]', true),
+
   env('invites.enabled', 'INVITES_ENABLED', 'boolean', true),
   env('invites.length', 'INVITES_LENGTH', 'number', true),
 

@@ -164,6 +164,7 @@ export const schema = z.object({
     versionChecking: z.boolean().default(true),
     versionAPI: z.string().url().default('https://zipline-version.diced.sh/'),
   }),
+  domains: z.array(z.string()).default([]),
   invites: z.object({
     enabled: z.boolean().default(true),
     length: z.number().default(8),

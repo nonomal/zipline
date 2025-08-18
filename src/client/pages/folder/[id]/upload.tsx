@@ -3,14 +3,15 @@ import UploadFile from '@/components/pages/upload/File';
 import { type Response } from '@/lib/api/response';
 import { SafeConfig } from '@/lib/config/safe';
 import { Anchor, Center, Container, Text } from '@mantine/core';
-import { Link, Params, useLoaderData } from 'react-router-dom';
+import { data, Link, Params, useLoaderData } from 'react-router-dom';
 import useSWR from 'swr';
 
 export async function loader({ params }: { params: Params<string> }) {
   const res = await fetch(`/api/server/folder/${params.id}?upload=true`);
   if (!res.ok) {
-    throw new Response('Folder not found', { status: 404 });
+    throw data('Folder not found', { status: 404 });
   }
+
   return {
     folder: (await res.json()) as Response['/api/server/folder/[id]'],
   };
