@@ -1,4 +1,3 @@
-import { useRouteError } from 'react-router-dom';
 import GenericError from './GenericError';
 
 export default function RootErrorBoundary(props: Record<string, any>) {
