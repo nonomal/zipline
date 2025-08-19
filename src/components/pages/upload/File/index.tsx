@@ -147,6 +147,7 @@ export default function UploadFile({ title, folder }: { title?: string; folder?:
         my='sm'
         loading={dropLoading}
         disabled={dropLoading}
+        style={{ zIndex: 1 }}
       >
         <Group justify='center' gap='xl' style={{ minHeight: rem(220), pointerEvents: 'none' }}>
           <Dropzone.Accept>
