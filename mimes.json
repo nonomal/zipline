@@ -122,6 +122,7 @@
   ["calx", ["application/vnd.ms-office.calx"]],
   ["cap", ["application/vnd.tcpdump.pcap"]],
   ["car", ["application/vnd.curl.car"]],
+  ["cast", ["application/x-asciicast"]],
   ["cat", ["application/vnd.ms-pki.seccat"]],
   ["cb7", ["application/x-cbr"]],
   ["cba", ["application/x-cbr"]],

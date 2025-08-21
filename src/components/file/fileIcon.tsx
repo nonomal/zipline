@@ -16,6 +16,7 @@ import {
   IconFileTypeHtml,
   IconFileTypeJs,
   IconFileTypeJsx,
+  IconFileTypePdf,
   IconFileTypePhp,
   IconFileTypePpt,
   IconFileTypeRs,
@@ -49,7 +50,7 @@ const icons: Record<string, Icon> = {
   'application/x-gzip': IconFileZip,
 
   // common text/document files that are not detected by the 'text' type
-  'application/pdf': IconFileText,
+  'application/pdf': IconFileTypePdf,
   'application/msword': IconFileTypeDocx,
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document': IconFileTypeDocx,
   'application/vnd.ms-excel': IconFileTypeXls,
@@ -67,6 +68,7 @@ const icons: Record<string, Icon> = {
   'text/javascript': IconFileTypeJs,
   'application/json': IconBracketsContain,
   'text/xml': IconFileTypeXml,
+  'application/x-asciicast': IconTerminal2,
 
   // zipline text uploads
   'text/x-zipline-html': IconFileTypeHtml,

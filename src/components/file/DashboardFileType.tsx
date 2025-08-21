@@ -15,6 +15,7 @@ import { useEffect, useState, useCallback, useMemo } from 'react';
 import { renderMode } from '../pages/upload/renderMode';
 import Render from '../render/Render';
 import fileIcon from './fileIcon';
+import Asciinema from '../render/Asciinema';
 
 function PlaceholderContent({ text, Icon }: { text: string; Icon: Icon }) {
   return (
@@ -83,7 +84,7 @@ export default function DashboardFileType({
   const renderIn = useMemo(() => renderMode(file.name.split('.').pop() || ''), [file.name]);
 
   const [fileContent, setFileContent] = useState('');
-  const [type, setType] = useState<string>(file.type.split('/')[0]);
+  const [type, setType] = useState(file.type.split('/')[0]);
 
   const [open, setOpen] = useState(false);
 
@@ -164,8 +165,10 @@ export default function DashboardFileType({
       </Paper>
     );
 
-  switch (type) {
-    case 'video':
+  const isAsciicast = file.type === 'application/x-asciicast' || file.name.endsWith('.cast');
+
+  switch (true) {
+    case type === 'video':
       return show ? (
         <video
           width='100%'
@@ -201,7 +204,7 @@ export default function DashboardFileType({
       ) : (
         <Placeholder text={`Click to play video ${file.name}`} Icon={fileIcon(file.type)} />
       );
-    case 'image':
+    case type === 'image':
       return show ? (
         <Center>
           <MantineImage
@@ -240,7 +243,7 @@ export default function DashboardFileType({
           alt={file.name || 'Image'}
         />
       );
-    case 'audio':
+    case type === 'audio':
       return show ? (
         <audio
           autoPlay
@@ -252,7 +255,7 @@ export default function DashboardFileType({
       ) : (
         <Placeholder text={`Click to play audio ${file.name}`} Icon={fileIcon(file.type)} />
       );
-    case 'text':
+    case type === 'text':
       return show ? (
         fileContent.trim() === '' ? (
           <LoadingOverlay
@@ -275,6 +278,15 @@ export default function DashboardFileType({
         )
       ) : (
         <Placeholder text={`Click to view text ${file.name}`} Icon={fileIcon(file.type)} />
+      );
+    case isAsciicast === true:
+      return show && dbFile ? (
+        <Asciinema src={`/raw/${file.name}`} />
+      ) : (
+        <Placeholder
+          text={`Click to download asciinema cast ${file.name}`}
+          Icon={fileIcon('application/x-asciicast')}
+        />
       );
     default:
       if (dbFile && !show)
