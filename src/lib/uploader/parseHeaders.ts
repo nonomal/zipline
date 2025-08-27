@@ -1,5 +1,6 @@
 import ms from 'ms';
 import { Config } from '../config/validate';
+import { checkOutput, COMPRESS_TYPES, CompressType } from '../compress';
 
 // from ms@3.0.0-canary.1
 type Unit =
@@ -42,6 +43,8 @@ type StringBoolean = 'true' | 'false';
 export type UploadHeaders = {
   'x-zipline-deletes-at'?: string;
   'x-zipline-format'?: Config['files']['defaultFormat'];
+
+  'x-zipline-image-compression-type'?: CompressType;
   'x-zipline-image-compression-percent'?: string;
   'x-zipline-password'?: string;
   'x-zipline-max-views'?: string;
@@ -67,11 +70,16 @@ export type UploadHeaders = {
 export type UploadOptions = {
   deletesAt?: Date | 'never';
   format?: Config['files']['defaultFormat'];
-  imageCompressionPercent?: number;
   password?: string;
   maxViews?: number;
   noJson?: boolean;
   addOriginalName?: boolean;
+
+  imageCompression?: {
+    type?: CompressType;
+    percent: number;
+  };
+
   overrides?: {
     filename?: string;
     returnDomain?: string;
@@ -128,10 +136,19 @@ export function parseExpiry(header: string): Date | null {
   return human;
 }
 
+function parsePercent(header: keyof UploadHeaders, percent: string) {
+  const num = Number(percent);
+  if (isNaN(num)) return headerError(header, 'Invalid percent (NaN)');
+
+  if (num < 0 || num > 100) return headerError(header, 'Invalid percent (must be between 0 and 100)');
+
+  return num;
+}
+
 function headerError(header: keyof UploadHeaders, message: string) {
   return {
     header,
-    message,
+    message: `[${header}]: ${message}`
   };
 }
 
@@ -166,18 +183,41 @@ export function parseHeaders(headers: UploadHeaders, fileConfig: Config['files']
   }
 
   const imageCompressionPercent = headers['x-zipline-image-compression-percent'];
-  if (imageCompressionPercent) {
-    const num = Number(imageCompressionPercent);
-    if (isNaN(num))
-      return headerError('x-zipline-image-compression-percent', 'Invalid compression percent (NaN)');
-
-    if (num < 0 || num > 100)
+  const imageCompressionType = headers['x-zipline-image-compression-type'];
+  if (imageCompressionType) {
+    if (!imageCompressionPercent)
       return headerError(
         'x-zipline-image-compression-percent',
-        'Invalid compression percent (must be between 0 and 100)',
+        'missing "x-zipline-image-compression-percent" when "x-zipline-image-compression-type" is provided',
       );
 
-    response.imageCompressionPercent = num;
+    if (!COMPRESS_TYPES.includes(imageCompressionType))
+      return headerError(
+        'x-zipline-image-compression-type',
+        `Invalid compression type (must be one of: ${COMPRESS_TYPES.join(', ')})`,
+      );
+
+    if (!checkOutput(imageCompressionType))
+      return headerError(
+        'x-zipline-image-compression-type',
+        `Compression type "${imageCompressionType}" is not supported on the system.`,
+      );
+
+    const percent = parsePercent('x-zipline-image-compression-percent', imageCompressionPercent);
+    if (typeof percent === 'object') return percent;
+
+    response.imageCompression = {
+      type: imageCompressionType,
+      percent,
+    };
+  } else if (imageCompressionPercent) {
+    const percent = parsePercent('x-zipline-image-compression-percent', imageCompressionPercent);
+    if (typeof percent === 'object') return percent;
+
+    response.imageCompression = {
+      type: 'jpg',
+      percent,
+    };
   }
 
   const password = headers['x-zipline-password'];

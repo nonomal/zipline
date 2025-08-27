@@ -1,6 +1,6 @@
 import { Prisma } from '@/prisma/client';
 import { bytes } from '@/lib/bytes';
-import { compressFile } from '@/lib/compress';
+import { compressFile, CompressResult } from '@/lib/compress';
 import { config } from '@/lib/config';
 import { hashPassword } from '@/lib/crypto';
 import { datasource } from '@/lib/datasource';
@@ -45,7 +45,7 @@ export type ApiUploadResponse = {
     url: string;
     pending?: boolean;
     removedGps?: boolean;
-    compressed?: boolean;
+    compressed?: CompressResult;
   }[];
 
   deletesAt?: string;
@@ -65,7 +65,7 @@ export default fastifyPlugin(
       Headers: UploadHeaders;
     }>(PATH, { preHandler: [userMiddleware, rateLimit] }, async (req, res) => {
       const options = parseHeaders(req.headers, config.files);
-      if (options.header) return res.badRequest('bad options, receieved: ' + JSON.stringify(options));
+      if (options.header) return res.badRequest(`bad options: ${options.message}`);
 
       if (options.partial) return res.badRequest('bad options, receieved: partial upload');
 
@@ -168,11 +168,13 @@ export default fastifyPlugin(
         }
 
         // compress the image if requested
-        let compressed = false;
-        if (mimetype.startsWith('image/') && options.imageCompressionPercent) {
-          await compressFile(file.filepath, options.imageCompressionPercent);
-          logger.c('jpg').debug(`compressed file ${file.filename}`);
-          compressed = true;
+        let compressed;
+        if (mimetype.startsWith('image/') && options.imageCompression) {
+          compressed = await compressFile(file.filepath, {
+            quality: options.imageCompression.percent,
+            type: options.imageCompression.type,
+          });
+          logger.c('compress').debug(`compressed file ${file.filename}`);
         }
 
         // remove gps metadata if requested
@@ -187,9 +189,9 @@ export default fastifyPlugin(
         const tempFileStats = await stat(file.filepath);
 
         const data: Prisma.FileCreateInput = {
-          name: `${fileName}${compressed ? '.jpg' : extension}`,
+          name: `${fileName}${compressed ? '.' + compressed.ext : extension}`,
           size: tempFileStats.size,
-          type: compressed ? 'image/jpeg' : mimetype,
+          type: compressed?.mimetype ?? mimetype,
           User: { connect: { id: req.user ? req.user.id : options.folder ? folder?.userId : undefined } },
         };
 

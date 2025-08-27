@@ -1,13 +1,62 @@
 import sharp from 'sharp';
 
-export function compressFile(filePath: string, quality: number) {
-  const buffer = sharp(filePath).withMetadata().jpeg({ quality: quality }).toBuffer();
+export const COMPRESS_TYPES = ['jpg', 'jpeg', 'png', 'webp', 'jxl'] as const;
+export type CompressType = (typeof COMPRESS_TYPES)[number];
 
-  return buffer.then((data) => {
-    return sharp(data).toFile(filePath);
-  });
+export type CompressResult = {
+  mimetype: string;
+  ext: CompressType;
+};
+
+export type CompressOptions = {
+  quality: number;
+  type?: CompressType;
+};
+
+export function checkOutput(type: CompressType): boolean {
+  if (type === 'jpg') type = 'jpeg';
+
+  return !!(sharp.format as any)[type]?.output?.file && !!(sharp.format as any)[type]?.output?.buffer;
 }
 
-export function replaceFileNameJpg(original: string, when?: boolean) {
-  return when ? original.replace(/\.[a-zA-Z0-9]+$/, '.jpg') : original;
+export async function compressFile(filePath: string, options: CompressOptions): Promise<CompressResult> {
+  const { quality, type } = options;
+
+  const image = sharp(filePath).withMetadata();
+
+  const result: CompressResult = {
+    mimetype: '',
+    ext: 'jpg',
+  };
+
+  let buffer: Buffer;
+
+  switch (type?.toLowerCase()) {
+    case 'png':
+      buffer = await image.png({ quality }).toBuffer();
+      result.mimetype = 'image/png';
+      result.ext = 'png';
+      break;
+    case 'webp':
+      buffer = await image.webp({ quality }).toBuffer();
+      result.mimetype = 'image/webp';
+      result.ext = 'webp';
+      break;
+    case 'jxl':
+      buffer = await image.jxl({ quality }).toBuffer();
+      result.mimetype = 'image/jxl';
+      result.ext = 'jxl';
+      break;
+    case 'jpg':
+    case 'jpeg':
+    default:
+      buffer = await image.jpeg({ quality }).toBuffer();
+      result.mimetype = 'image/jpeg';
+      result.ext = 'jpg';
+      break;
+  }
+
+  await sharp(buffer).toFile(filePath);
+
+  return result;
 }
