@@ -1,7 +1,7 @@
 import Layout from '@/components/Layout';
 import { Response as ApiResponse } from '@/lib/api/response';
 import { isAdministrator } from '@/lib/role';
-import { createBrowserRouter, redirect } from 'react-router-dom';
+import { createBrowserRouter, data, redirect } from 'react-router-dom';
 import DashboardErrorBoundary from './error/DashboardErrorBoundary';
 import RootErrorBoundary from './error/RootErrorBoundary';
 import FourOhFour from './pages/404';
@@ -10,15 +10,19 @@ import Logout from './pages/auth/logout';
 import Root from './Root';
 
 export async function dashboardLoader() {
-  const res = await fetch('/api/server/settings/web');
-  if (!res.ok) {
-    return redirect('/auth/login');
+  try {
+    const res = await fetch('/api/server/settings/web');
+    if (!res.ok) {
+      return redirect('/auth/login');
+    }
+
+    const data = await res.json();
+    console.log('Loaded settings:', data);
+
+    return data as ApiResponse['/api/server/settings/web'];
+  } catch (error) {
+    throw data('Failed to load settings' + (error as any).message, { status: 500 });
   }
-
-  const data = await res.json();
-  console.log('Loaded settings:', data);
-
-  return data as ApiResponse['/api/server/settings/web'];
 }
 
 export const router = createBrowserRouter([
