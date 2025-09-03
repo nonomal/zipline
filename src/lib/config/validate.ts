@@ -364,23 +364,32 @@ export function validateConfigObject(env: ParsedConfig): Config {
   return validated.data;
 }
 
-function handleError(error: z.core.$ZodIssue) {
+function handleError(error: z.core.$ZodIssue, pathPrefix: PropertyKey[] = []) {
   logger.debug(JSON.stringify(error));
 
   if (error.code === 'invalid_union') {
     for (const unionError of error.errors) {
       for (const subError of unionError) {
-        handleError(subError);
+        handleError(subError, error.path);
       }
     }
 
     return;
   }
 
-  const path =
-    error.path[1] === 'externalLinks'
-      ? `WEBSITE_EXTERNAL_LINKS[${String(error.path[2])}]`
-      : (PROP_TO_ENV[<keyof typeof PROP_TO_ENV>error.path.join('.')] ?? error.path.join('.'));
+  const path = prettifyPath(error.path, pathPrefix);
 
   logger.error(`${path}: ${error.message}`);
+}
+
+function prettifyPath(path: PropertyKey[], prefix: PropertyKey[] = []) {
+  if (path[1] === 'externalLinks') {
+    return `WEBSITE_EXTERNAL_LINKS[${String(path[2])}]`;
+  }
+
+  return (
+    PROP_TO_ENV[
+      (prefix.length > 0 ? prefix.join('.') + '.' : '') + <keyof typeof PROP_TO_ENV>path.join('.')
+    ] ?? (prefix.length > 0 ? prefix.join('.') + '.' : '') + path.join('.')
+  );
 }
