@@ -1,0 +1,2037 @@
+{
+  "id": "00000000-0000-0000-0000-000000000000",
+  "prevId": "",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "public.Zipline": {
+      "name": "Zipline",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp(3)",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "CURRENT_TIMESTAMP"
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "timestamp(3)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "firstSetup": {
+          "name": "firstSetup",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "coreReturnHttpsUrls": {
+          "name": "coreReturnHttpsUrls",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "coreDefaultDomain": {
+          "name": "coreDefaultDomain",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "coreTempDirectory": {
+          "name": "coreTempDirectory",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "chunksEnabled": {
+          "name": "chunksEnabled",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "chunksMax": {
+          "name": "chunksMax",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'95mb'"
+        },
+        "chunksSize": {
+          "name": "chunksSize",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'25mb'"
+        },
+        "tasksDeleteInterval": {
+          "name": "tasksDeleteInterval",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'30m'"
+        },
+        "tasksClearInvitesInterval": {
+          "name": "tasksClearInvitesInterval",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'30m'"
+        },
+        "tasksMaxViewsInterval": {
+          "name": "tasksMaxViewsInterval",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'30m'"
+        },
+        "tasksThumbnailsInterval": {
+          "name": "tasksThumbnailsInterval",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'30m'"
+        },
+        "tasksMetricsInterval": {
+          "name": "tasksMetricsInterval",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'30m'"
+        },
+        "filesRoute": {
+          "name": "filesRoute",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'/u'"
+        },
+        "filesLength": {
+          "name": "filesLength",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 6
+        },
+        "filesDefaultFormat": {
+          "name": "filesDefaultFormat",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'random'"
+        },
+        "filesDisabledExtensions": {
+          "name": "filesDisabledExtensions",
+          "type": "text[]",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "filesMaxFileSize": {
+          "name": "filesMaxFileSize",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'100mb'"
+        },
+        "filesDefaultExpiration": {
+          "name": "filesDefaultExpiration",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "filesAssumeMimetypes": {
+          "name": "filesAssumeMimetypes",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "filesDefaultDateFormat": {
+          "name": "filesDefaultDateFormat",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'YYYY-MM-DD_HH:mm:ss'"
+        },
+        "filesRemoveGpsMetadata": {
+          "name": "filesRemoveGpsMetadata",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "urlsRoute": {
+          "name": "urlsRoute",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'/go'"
+        },
+        "urlsLength": {
+          "name": "urlsLength",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 6
+        },
+        "featuresImageCompression": {
+          "name": "featuresImageCompression",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "featuresRobotsTxt": {
+          "name": "featuresRobotsTxt",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "featuresHealthcheck": {
+          "name": "featuresHealthcheck",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "featuresUserRegistration": {
+          "name": "featuresUserRegistration",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "featuresOauthRegistration": {
+          "name": "featuresOauthRegistration",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "featuresDeleteOnMaxViews": {
+          "name": "featuresDeleteOnMaxViews",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "featuresThumbnailsEnabled": {
+          "name": "featuresThumbnailsEnabled",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "featuresThumbnailsNumberThreads": {
+          "name": "featuresThumbnailsNumberThreads",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 4
+        },
+        "featuresMetricsEnabled": {
+          "name": "featuresMetricsEnabled",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "featuresMetricsAdminOnly": {
+          "name": "featuresMetricsAdminOnly",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "featuresMetricsShowUserSpecific": {
+          "name": "featuresMetricsShowUserSpecific",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "invitesEnabled": {
+          "name": "invitesEnabled",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "invitesLength": {
+          "name": "invitesLength",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 6
+        },
+        "websiteTitle": {
+          "name": "websiteTitle",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'Zipline'"
+        },
+        "websiteTitleLogo": {
+          "name": "websiteTitleLogo",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "websiteExternalLinks": {
+          "name": "websiteExternalLinks",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'[{\"url\":\"https://github.com/diced/zipline\",\"name\":\"GitHub\"},{\"url\":\"https://zipline.diced.sh/\",\"name\":\"Documentation\"}]'::jsonb"
+        },
+        "websiteLoginBackground": {
+          "name": "websiteLoginBackground",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "websiteDefaultAvatar": {
+          "name": "websiteDefaultAvatar",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "websiteTos": {
+          "name": "websiteTos",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "websiteThemeDefault": {
+          "name": "websiteThemeDefault",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'system'"
+        },
+        "websiteThemeDark": {
+          "name": "websiteThemeDark",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'builtin:dark_gray'"
+        },
+        "websiteThemeLight": {
+          "name": "websiteThemeLight",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'builtin:light_gray'"
+        },
+        "oauthBypassLocalLogin": {
+          "name": "oauthBypassLocalLogin",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "oauthLoginOnly": {
+          "name": "oauthLoginOnly",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "oauthDiscordClientId": {
+          "name": "oauthDiscordClientId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "oauthDiscordClientSecret": {
+          "name": "oauthDiscordClientSecret",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "oauthDiscordRedirectUri": {
+          "name": "oauthDiscordRedirectUri",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "oauthGoogleClientId": {
+          "name": "oauthGoogleClientId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "oauthGoogleClientSecret": {
+          "name": "oauthGoogleClientSecret",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "oauthGoogleRedirectUri": {
+          "name": "oauthGoogleRedirectUri",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "oauthGithubClientId": {
+          "name": "oauthGithubClientId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "oauthGithubClientSecret": {
+          "name": "oauthGithubClientSecret",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "oauthGithubRedirectUri": {
+          "name": "oauthGithubRedirectUri",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "oauthOidcClientId": {
+          "name": "oauthOidcClientId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "oauthOidcClientSecret": {
+          "name": "oauthOidcClientSecret",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "oauthOidcAuthorizeUrl": {
+          "name": "oauthOidcAuthorizeUrl",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "oauthOidcTokenUrl": {
+          "name": "oauthOidcTokenUrl",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "oauthOidcUserinfoUrl": {
+          "name": "oauthOidcUserinfoUrl",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "oauthOidcRedirectUri": {
+          "name": "oauthOidcRedirectUri",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "mfaTotpEnabled": {
+          "name": "mfaTotpEnabled",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "mfaTotpIssuer": {
+          "name": "mfaTotpIssuer",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'Zipline'"
+        },
+        "mfaPasskeys": {
+          "name": "mfaPasskeys",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "ratelimitEnabled": {
+          "name": "ratelimitEnabled",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "ratelimitMax": {
+          "name": "ratelimitMax",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 10
+        },
+        "ratelimitWindow": {
+          "name": "ratelimitWindow",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ratelimitAdminBypass": {
+          "name": "ratelimitAdminBypass",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "ratelimitAllowList": {
+          "name": "ratelimitAllowList",
+          "type": "text[]",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "httpWebhookOnUpload": {
+          "name": "httpWebhookOnUpload",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "httpWebhookOnShorten": {
+          "name": "httpWebhookOnShorten",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "discordWebhookUrl": {
+          "name": "discordWebhookUrl",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "discordUsername": {
+          "name": "discordUsername",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "discordAvatarUrl": {
+          "name": "discordAvatarUrl",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "discordOnUploadWebhookUrl": {
+          "name": "discordOnUploadWebhookUrl",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "discordOnUploadUsername": {
+          "name": "discordOnUploadUsername",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "discordOnUploadAvatarUrl": {
+          "name": "discordOnUploadAvatarUrl",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "discordOnUploadContent": {
+          "name": "discordOnUploadContent",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "discordOnUploadEmbed": {
+          "name": "discordOnUploadEmbed",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "discordOnShortenWebhookUrl": {
+          "name": "discordOnShortenWebhookUrl",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "discordOnShortenUsername": {
+          "name": "discordOnShortenUsername",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "discordOnShortenAvatarUrl": {
+          "name": "discordOnShortenAvatarUrl",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "discordOnShortenContent": {
+          "name": "discordOnShortenContent",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "discordOnShortenEmbed": {
+          "name": "discordOnShortenEmbed",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "pwaEnabled": {
+          "name": "pwaEnabled",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "pwaTitle": {
+          "name": "pwaTitle",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'Zipline'"
+        },
+        "pwaShortName": {
+          "name": "pwaShortName",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'Zipline'"
+        },
+        "pwaDescription": {
+          "name": "pwaDescription",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'Zipline'"
+        },
+        "pwaThemeColor": {
+          "name": "pwaThemeColor",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'#000000'"
+        },
+        "pwaBackgroundColor": {
+          "name": "pwaBackgroundColor",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'#000000'"
+        },
+        "websiteLoginBackgroundBlur": {
+          "name": "websiteLoginBackgroundBlur",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "filesRandomWordsNumAdjectives": {
+          "name": "filesRandomWordsNumAdjectives",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 2
+        },
+        "filesRandomWordsSeparator": {
+          "name": "filesRandomWordsSeparator",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'-'"
+        },
+        "featuresVersionAPI": {
+          "name": "featuresVersionAPI",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'https://zipline-version.diced.sh'"
+        },
+        "featuresVersionChecking": {
+          "name": "featuresVersionChecking",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "oauthDiscordAllowedIds": {
+          "name": "oauthDiscordAllowedIds",
+          "type": "text[]",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'{\"RAY\"}'"
+        },
+        "oauthDiscordDeniedIds": {
+          "name": "oauthDiscordDeniedIds",
+          "type": "text[]",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'{\"RAY\"}'"
+        },
+        "domains": {
+          "name": "domains",
+          "type": "text[]",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'{\"RAY\"}'"
+        },
+        "filesDefaultCompressionFormat": {
+          "name": "filesDefaultCompressionFormat",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'jpg'"
+        },
+        "featuresThumbnailsFormat": {
+          "name": "featuresThumbnailsFormat",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'jpg'"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {},
+      "policies": {},
+      "isRLSEnabled": false
+    },
+    "public.Metric": {
+      "name": "Metric",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp(3)",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "CURRENT_TIMESTAMP"
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "timestamp(3)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "data": {
+          "name": "data",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {},
+      "policies": {},
+      "isRLSEnabled": false
+    },
+    "public.Url": {
+      "name": "Url",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp(3)",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "CURRENT_TIMESTAMP"
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "timestamp(3)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "code": {
+          "name": "code",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "vanity": {
+          "name": "vanity",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "destination": {
+          "name": "destination",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "views": {
+          "name": "views",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "maxViews": {
+          "name": "maxViews",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "password": {
+          "name": "password",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "userId": {
+          "name": "userId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "enabled": {
+          "name": "enabled",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        }
+      },
+      "indexes": {
+        "Url_code_vanity_key": {
+          "name": "Url_code_vanity_key",
+          "columns": [
+            {
+              "expression": "code",
+              "asc": true,
+              "nulls": "last",
+              "opclass": "text_ops",
+              "isExpression": false
+            },
+            {
+              "expression": "vanity",
+              "asc": true,
+              "nulls": "last",
+              "opclass": "text_ops",
+              "isExpression": false
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "Url_userId_fkey": {
+          "name": "Url_userId_fkey",
+          "tableFrom": "Url",
+          "tableTo": "User",
+          "schemaTo": "public",
+          "columnsFrom": [
+            "userId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "cascade"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {},
+      "policies": {},
+      "isRLSEnabled": false
+    },
+    "public.Folder": {
+      "name": "Folder",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp(3)",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "CURRENT_TIMESTAMP"
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "timestamp(3)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "public": {
+          "name": "public",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "userId": {
+          "name": "userId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "allowUploads": {
+          "name": "allowUploads",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "Folder_userId_fkey": {
+          "name": "Folder_userId_fkey",
+          "tableFrom": "Folder",
+          "tableTo": "User",
+          "schemaTo": "public",
+          "columnsFrom": [
+            "userId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "cascade"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {},
+      "policies": {},
+      "isRLSEnabled": false
+    },
+    "public.User": {
+      "name": "User",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp(3)",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "CURRENT_TIMESTAMP"
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "timestamp(3)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "username": {
+          "name": "username",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "password": {
+          "name": "password",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "avatar": {
+          "name": "avatar",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "token": {
+          "name": "token",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "role": {
+          "name": "role",
+          "type": "Role",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'USER'"
+        },
+        "view": {
+          "name": "view",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{}'::jsonb"
+        },
+        "totpSecret": {
+          "name": "totpSecret",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "sessions": {
+          "name": "sessions",
+          "type": "text[]",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "User_token_key": {
+          "name": "User_token_key",
+          "columns": [
+            {
+              "expression": "token",
+              "asc": true,
+              "nulls": "last",
+              "opclass": "text_ops",
+              "isExpression": false
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "User_username_key": {
+          "name": "User_username_key",
+          "columns": [
+            {
+              "expression": "username",
+              "asc": true,
+              "nulls": "last",
+              "opclass": "text_ops",
+              "isExpression": false
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {},
+      "policies": {},
+      "isRLSEnabled": false
+    },
+    "public.Export": {
+      "name": "Export",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp(3)",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "CURRENT_TIMESTAMP"
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "timestamp(3)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "completed": {
+          "name": "completed",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "path": {
+          "name": "path",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "files": {
+          "name": "files",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "size": {
+          "name": "size",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "userId": {
+          "name": "userId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "Export_userId_fkey": {
+          "name": "Export_userId_fkey",
+          "tableFrom": "Export",
+          "tableTo": "User",
+          "schemaTo": "public",
+          "columnsFrom": [
+            "userId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "cascade"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {},
+      "policies": {},
+      "isRLSEnabled": false
+    },
+    "public.UserQuota": {
+      "name": "UserQuota",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp(3)",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "CURRENT_TIMESTAMP"
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "timestamp(3)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "filesQuota": {
+          "name": "filesQuota",
+          "type": "UserFilesQuota",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "maxBytes": {
+          "name": "maxBytes",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "maxFiles": {
+          "name": "maxFiles",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "maxUrls": {
+          "name": "maxUrls",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "userId": {
+          "name": "userId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "UserQuota_userId_key": {
+          "name": "UserQuota_userId_key",
+          "columns": [
+            {
+              "expression": "userId",
+              "asc": true,
+              "nulls": "last",
+              "opclass": "text_ops",
+              "isExpression": false
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "UserQuota_userId_fkey": {
+          "name": "UserQuota_userId_fkey",
+          "tableFrom": "UserQuota",
+          "tableTo": "User",
+          "schemaTo": "public",
+          "columnsFrom": [
+            "userId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "cascade"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {},
+      "policies": {},
+      "isRLSEnabled": false
+    },
+    "public.UserPasskey": {
+      "name": "UserPasskey",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp(3)",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "CURRENT_TIMESTAMP"
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "timestamp(3)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "lastUsed": {
+          "name": "lastUsed",
+          "type": "timestamp(3)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "reg": {
+          "name": "reg",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "userId": {
+          "name": "userId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "UserPasskey_userId_fkey": {
+          "name": "UserPasskey_userId_fkey",
+          "tableFrom": "UserPasskey",
+          "tableTo": "User",
+          "schemaTo": "public",
+          "columnsFrom": [
+            "userId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "cascade"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {},
+      "policies": {},
+      "isRLSEnabled": false
+    },
+    "public.OAuthProvider": {
+      "name": "OAuthProvider",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp(3)",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "CURRENT_TIMESTAMP"
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "timestamp(3)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "userId": {
+          "name": "userId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "provider": {
+          "name": "provider",
+          "type": "OAuthProviderType",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "username": {
+          "name": "username",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "accessToken": {
+          "name": "accessToken",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "refreshToken": {
+          "name": "refreshToken",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "oauthId": {
+          "name": "oauthId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "OAuthProvider_provider_oauthId_key": {
+          "name": "OAuthProvider_provider_oauthId_key",
+          "columns": [
+            {
+              "expression": "provider",
+              "asc": true,
+              "nulls": "last",
+              "opclass": "text_ops",
+              "isExpression": false
+            },
+            {
+              "expression": "oauthId",
+              "asc": true,
+              "nulls": "last",
+              "opclass": "text_ops",
+              "isExpression": false
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "OAuthProvider_userId_fkey": {
+          "name": "OAuthProvider_userId_fkey",
+          "tableFrom": "OAuthProvider",
+          "tableTo": "User",
+          "schemaTo": "public",
+          "columnsFrom": [
+            "userId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "cascade"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {},
+      "policies": {},
+      "isRLSEnabled": false
+    },
+    "public.File": {
+      "name": "File",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp(3)",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "CURRENT_TIMESTAMP"
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "timestamp(3)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "deletesAt": {
+          "name": "deletesAt",
+          "type": "timestamp(3)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "originalName": {
+          "name": "originalName",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "size": {
+          "name": "size",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "type": {
+          "name": "type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "views": {
+          "name": "views",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "maxViews": {
+          "name": "maxViews",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "favorite": {
+          "name": "favorite",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "password": {
+          "name": "password",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "userId": {
+          "name": "userId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "folderId": {
+          "name": "folderId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "File_userId_fkey": {
+          "name": "File_userId_fkey",
+          "tableFrom": "File",
+          "tableTo": "User",
+          "schemaTo": "public",
+          "columnsFrom": [
+            "userId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "cascade"
+        },
+        "File_folderId_fkey": {
+          "name": "File_folderId_fkey",
+          "tableFrom": "File",
+          "tableTo": "Folder",
+          "schemaTo": "public",
+          "columnsFrom": [
+            "folderId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "cascade"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {},
+      "policies": {},
+      "isRLSEnabled": false
+    },
+    "public.Thumbnail": {
+      "name": "Thumbnail",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp(3)",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "CURRENT_TIMESTAMP"
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "timestamp(3)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "path": {
+          "name": "path",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "fileId": {
+          "name": "fileId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "Thumbnail_fileId_key": {
+          "name": "Thumbnail_fileId_key",
+          "columns": [
+            {
+              "expression": "fileId",
+              "asc": true,
+              "nulls": "last",
+              "opclass": "text_ops",
+              "isExpression": false
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "Thumbnail_fileId_fkey": {
+          "name": "Thumbnail_fileId_fkey",
+          "tableFrom": "Thumbnail",
+          "tableTo": "File",
+          "schemaTo": "public",
+          "columnsFrom": [
+            "fileId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "cascade"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {},
+      "policies": {},
+      "isRLSEnabled": false
+    },
+    "public.IncompleteFile": {
+      "name": "IncompleteFile",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp(3)",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "CURRENT_TIMESTAMP"
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "timestamp(3)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "IncompleteFileStatus",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "chunksTotal": {
+          "name": "chunksTotal",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "chunksComplete": {
+          "name": "chunksComplete",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "metadata": {
+          "name": "metadata",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "userId": {
+          "name": "userId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "IncompleteFile_userId_fkey": {
+          "name": "IncompleteFile_userId_fkey",
+          "tableFrom": "IncompleteFile",
+          "tableTo": "User",
+          "schemaTo": "public",
+          "columnsFrom": [
+            "userId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "cascade"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {},
+      "policies": {},
+      "isRLSEnabled": false
+    },
+    "public.Tag": {
+      "name": "Tag",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp(3)",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "CURRENT_TIMESTAMP"
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "timestamp(3)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "color": {
+          "name": "color",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "userId": {
+          "name": "userId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "Tag_name_key": {
+          "name": "Tag_name_key",
+          "columns": [
+            {
+              "expression": "name",
+              "asc": true,
+              "nulls": "last",
+              "opclass": "text_ops",
+              "isExpression": false
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "Tag_userId_fkey": {
+          "name": "Tag_userId_fkey",
+          "tableFrom": "Tag",
+          "tableTo": "User",
+          "schemaTo": "public",
+          "columnsFrom": [
+            "userId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "cascade"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {},
+      "policies": {},
+      "isRLSEnabled": false
+    },
+    "public.Invite": {
+      "name": "Invite",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp(3)",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "CURRENT_TIMESTAMP"
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "timestamp(3)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "expiresAt": {
+          "name": "expiresAt",
+          "type": "timestamp(3)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "code": {
+          "name": "code",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "uses": {
+          "name": "uses",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "maxUses": {
+          "name": "maxUses",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "inviterId": {
+          "name": "inviterId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "Invite_code_key": {
+          "name": "Invite_code_key",
+          "columns": [
+            {
+              "expression": "code",
+              "asc": true,
+              "nulls": "last",
+              "opclass": "text_ops",
+              "isExpression": false
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "Invite_inviterId_fkey": {
+          "name": "Invite_inviterId_fkey",
+          "tableFrom": "Invite",
+          "tableTo": "User",
+          "schemaTo": "public",
+          "columnsFrom": [
+            "inviterId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "cascade"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {},
+      "policies": {},
+      "isRLSEnabled": false
+    },
+    "public._FileToTag": {
+      "name": "_FileToTag",
+      "schema": "",
+      "columns": {
+        "A": {
+          "name": "A",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "B": {
+          "name": "B",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "_FileToTag_B_index": {
+          "name": "_FileToTag_B_index",
+          "columns": [
+            {
+              "expression": "B",
+              "asc": true,
+              "nulls": "last",
+              "opclass": "text_ops",
+              "isExpression": false
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "_FileToTag_A_fkey": {
+          "name": "_FileToTag_A_fkey",
+          "tableFrom": "_FileToTag",
+          "tableTo": "File",
+          "schemaTo": "public",
+          "columnsFrom": [
+            "A"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "cascade"
+        },
+        "_FileToTag_B_fkey": {
+          "name": "_FileToTag_B_fkey",
+          "tableFrom": "_FileToTag",
+          "tableTo": "Tag",
+          "schemaTo": "public",
+          "columnsFrom": [
+            "B"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "cascade"
+        }
+      },
+      "compositePrimaryKeys": {
+        "_FileToTag_AB_pkey": {
+          "name": "_FileToTag_AB_pkey",
+          "columns": [
+            "A",
+            "B"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraints": {},
+      "policies": {},
+      "isRLSEnabled": false
+    }
+  },
+  "enums": {
+    "public.IncompleteFileStatus": {
+      "name": "IncompleteFileStatus",
+      "values": [
+        "PENDING",
+        "PROCESSING",
+        "COMPLETE",
+        "FAILED"
+      ],
+      "schema": "public"
+    },
+    "public.OAuthProviderType": {
+      "name": "OAuthProviderType",
+      "values": [
+        "DISCORD",
+        "GOOGLE",
+        "GITHUB",
+        "OIDC"
+      ],
+      "schema": "public"
+    },
+    "public.Role": {
+      "name": "Role",
+      "values": [
+        "USER",
+        "ADMIN",
+        "SUPERADMIN"
+      ],
+      "schema": "public"
+    },
+    "public.UserFilesQuota": {
+      "name": "UserFilesQuota",
+      "values": [
+        "BY_BYTES",
+        "BY_FILES"
+      ],
+      "schema": "public"
+    }
+  },
+  "schemas": {},
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "views": {},
+  "_meta": {
+    "schemas": {},
+    "tables": {},
+    "columns": {}
+  },
+  "internal": {
+    "tables": {
+      "Zipline": {
+        "columns": {
+          "filesDisabledExtensions": {
+            "isArray": true,
+            "dimensions": 1,
+            "rawType": "text"
+          },
+          "ratelimitAllowList": {
+            "isArray": true,
+            "dimensions": 1,
+            "rawType": "text"
+          },
+          "oauthDiscordAllowedIds": {
+            "isArray": true,
+            "dimensions": 1,
+            "rawType": "text"
+          },
+          "oauthDiscordDeniedIds": {
+            "isArray": true,
+            "dimensions": 1,
+            "rawType": "text"
+          },
+          "domains": {
+            "isArray": true,
+            "dimensions": 1,
+            "rawType": "text"
+          }
+        }
+      },
+      "User": {
+        "columns": {
+          "sessions": {
+            "isArray": true,
+            "dimensions": 1,
+            "rawType": "text"
+          }
+        }
+      }
+    }
+  }
+}
