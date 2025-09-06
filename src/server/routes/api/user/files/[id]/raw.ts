@@ -4,6 +4,7 @@ import { verifyPassword } from '@/lib/crypto';
 import { datasource } from '@/lib/datasource';
 import { prisma } from '@/lib/db';
 import { log } from '@/lib/logger';
+import { canInteract } from '@/lib/role';
 import { userMiddleware } from '@/server/middleware/user';
 import fastifyPlugin from 'fastify-plugin';
 
@@ -44,9 +45,15 @@ export default fastifyPlugin(
       const file = await prisma.file.findFirst({
         where: {
           id,
-          userId: req.user.id,
+        },
+        include: {
+          User: true,
         },
       });
+
+      if (file && file.userId !== req.user.id) {
+        if (!canInteract(req.user.role, file.User?.role)) return res.callNotFound();
+      }
 
       if (file?.deletesAt && file.deletesAt <= new Date()) {
         try {
