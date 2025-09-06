@@ -137,11 +137,6 @@ export async function render(
     }
   }
 
-  await prisma.file.update({
-    where: { id: file.id },
-    data: { views: { increment: 1 } },
-  });
-
   const data = {
     file,
     password: hasPassword,

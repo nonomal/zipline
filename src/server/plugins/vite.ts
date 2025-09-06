@@ -86,6 +86,8 @@ async function vitePlugin(fastify: FastifyInstance) {
         return this.redirect(redirect, status);
       }
 
+      if (status && [404, 410].includes(status)) return this.callNotFound();
+
       const finalHtml = template.replace(ZIPLINE_SSR_META, meta!).replace(ZIPLINE_SSR_INSERT, html);
 
       return this.type('text/html').send(finalHtml);

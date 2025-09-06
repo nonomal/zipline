@@ -17,6 +17,7 @@ import Asciinema from '../render/Asciinema';
 import Pdf from '../render/Pdf';
 import Render from '../render/Render';
 import fileIcon from './fileIcon';
+import { useUserStore } from '@/lib/store/user';
 
 function PlaceholderContent({ text, Icon }: { text: string; Icon: Icon }) {
   return (
@@ -79,8 +80,12 @@ export default function DashboardFileType({
   code?: boolean;
   allowZoom?: boolean;
 }) {
+  const user = useUserStore((state) => state.user);
   const disableMediaPreview = useSettingsStore((state) => state.settings.disableMediaPreview);
-
+  const fileRoute = user ? `/api/user/files/${(file as DbFile).id}/raw` : `/raw/${file.name}`;
+  const thumbnailRoute = user
+    ? `/api/user/files/${(file as DbFile).thumbnail?.path}/raw`
+    : `/raw/${(file as DbFile).thumbnail?.path}`;
   const dbFile = 'id' in file;
   const renderIn = useMemo(() => renderMode(file.name.split('.').pop() || ''), [file.name]);
 
@@ -108,7 +113,7 @@ export default function DashboardFileType({
       }
 
       if (file.size > 1 * 1024 * 1024) {
-        const res = await fetch(`/raw/${file.name}${password ? `?pw=${password}` : ''}`, {
+        const res = await fetch(`${fileRoute}${password ? `?pw=${password}` : ''}`, {
           headers: {
             Range: 'bytes=0-' + 1 * 1024 * 1024, // 0 mb to 1 mb
           },
@@ -121,7 +126,7 @@ export default function DashboardFileType({
         return;
       }
 
-      const res = await fetch(`/raw/${file.name}${password ? `?pw=${password}` : ''}`);
+      const res = await fetch(`${fileRoute}${password ? `?pw=${password}` : ''}`);
       if (!res.ok) throw new Error('Failed to fetch file');
       const text = await res.text();
       setFileContent(text);
@@ -176,15 +181,12 @@ export default function DashboardFileType({
           autoPlay
           muted
           controls
-          src={dbFile ? `/raw/${file.name}${password ? `?pw=${password}` : ''}` : URL.createObjectURL(file)}
+          src={dbFile ? `${fileRoute}${password ? `?pw=${password}` : ''}` : URL.createObjectURL(file)}
           style={{ cursor: 'pointer', maxWidth: '85vw', maxHeight: '85vh' }}
         />
       ) : (file as DbFile).thumbnail && dbFile ? (
         <Box pos='relative'>
-          <MantineImage
-            src={`/raw/${(file as DbFile).thumbnail!.path}`}
-            alt={file.name || 'Video thumbnail'}
-          />
+          <MantineImage src={thumbnailRoute} alt={file.name || 'Video thumbnail'} />
 
           <Center
             pos='absolute'
@@ -210,7 +212,7 @@ export default function DashboardFileType({
       return show ? (
         <Center>
           <MantineImage
-            src={dbFile ? `/raw/${file.name}${password ? `?pw=${password}` : ''}` : URL.createObjectURL(file)}
+            src={dbFile ? `${fileRoute}${password ? `?pw=${password}` : ''}` : URL.createObjectURL(file)}
             alt={file.name || 'Image'}
             style={{
               cursor: allowZoom ? 'zoom-in' : 'default',
@@ -222,9 +224,7 @@ export default function DashboardFileType({
           {allowZoom && open && (
             <FileZoomModal setOpen={setOpen}>
               <MantineImage
-                src={
-                  dbFile ? `/raw/${file.name}${password ? `?pw=${password}` : ''}` : URL.createObjectURL(file)
-                }
+                src={dbFile ? `${fileRoute}${password ? `?pw=${password}` : ''}` : URL.createObjectURL(file)}
                 alt={file.name || 'Image'}
                 style={{
                   maxWidth: '95vw',
@@ -241,7 +241,7 @@ export default function DashboardFileType({
         <MantineImage
           fit='contain'
           mah={400}
-          src={dbFile ? `/raw/${file.name}${password ? `?pw=${password}` : ''}` : URL.createObjectURL(file)}
+          src={dbFile ? `${fileRoute}${password ? `?pw=${password}` : ''}` : URL.createObjectURL(file)}
           alt={file.name || 'Image'}
         />
       );
@@ -253,7 +253,7 @@ export default function DashboardFileType({
           muted
           controls
           style={{ width: '100%' }}
-          src={dbFile ? `/raw/${file.name}${password ? `?pw=${password}` : ''}` : URL.createObjectURL(file)}
+          src={dbFile ? `${fileRoute}${password ? `?pw=${password}` : ''}` : URL.createObjectURL(file)}
         />
       ) : (
         <Placeholder text={`Click to play audio ${file.name}`} Icon={fileIcon(file.type)} />
@@ -286,7 +286,7 @@ export default function DashboardFileType({
 
     case isAsciicast === true:
       return show && dbFile ? (
-        <Asciinema src={`/raw/${file.name}${password ? `?pw=${password}` : ''}`} />
+        <Asciinema src={`${fileRoute}${password ? `?pw=${password}` : ''}`} />
       ) : (
         <Placeholder
           text={`Click to download asciinema cast ${file.name}`}
@@ -296,7 +296,7 @@ export default function DashboardFileType({
 
     case file.type === 'application/pdf':
       return show && dbFile ? (
-        <Pdf src={`/raw/${file.name}${password ? `?pw=${password}` : ''}`} />
+        <Pdf src={`${fileRoute}${password ? `?pw=${password}` : ''}`} />
       ) : (
         <Placeholder text={`Click to view PDF ${file.name}`} Icon={fileIcon(file.type)} />
       );
@@ -309,7 +309,7 @@ export default function DashboardFileType({
         return (
           <Paper withBorder p='xs' style={{ cursor: 'pointer' }}>
             <Placeholder
-              onClick={() => window.open(`/raw/${file.name}${password ? `?pw=${password}` : ''}`)}
+              onClick={() => window.open(`${fileRoute}${password ? `?pw=${password}` : ''}`)}
               text={`Click to view file ${file.name} in a new tab`}
               Icon={fileIcon(file.type)}
             />
