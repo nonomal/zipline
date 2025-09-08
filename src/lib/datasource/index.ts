@@ -11,7 +11,7 @@ declare global {
   var __datasource__: Datasource;
 }
 
-function getDatasource(config?: Config): void {
+function getDatasource(config?: Config): Datasource | void {
   if (!config) return;
 
   const logger = log('datasource');
@@ -35,6 +35,8 @@ function getDatasource(config?: Config): void {
       logger.error(`Datasource type ${config.datasource.type} is not supported`);
       process.exit(1);
   }
+
+  return datasource;
 }
 
 datasource = global.__datasource__;

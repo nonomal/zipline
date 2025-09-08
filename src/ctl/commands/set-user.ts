@@ -34,4 +34,5 @@ export async function setUser(property: string, value: string, { id }: { id: str
   if (property === 'password') parsed = '*********';
 
   console.log(`updated user(${id}) -> ${property} = ${parsed || value}`);
+  process.exit(0);
 }

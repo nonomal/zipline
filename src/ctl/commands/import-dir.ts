@@ -1,9 +1,9 @@
+import { bytes } from '@/lib/bytes';
+import { config, reloadSettings } from '@/lib/config';
 import { guess } from '@/lib/mimes';
 import { statSync } from 'fs';
-import { readFile, readdir } from 'fs/promises';
+import { mkdir, readdir } from 'fs/promises';
 import { join, parse, resolve } from 'path';
-import { reloadSettings } from '@/lib/config';
-import { bytes } from '@/lib/bytes';
 
 export async function importDir(
   directory: string,
@@ -57,16 +57,18 @@ export async function importDir(
 
   for (let i = 0; i !== files.length; ++i) {
     const info = parse(files[i]);
+    if (info.base.startsWith('.thumbnail')) continue;
+
     const mime = await guess(info.ext.replace('.', ''));
     const { size } = statSync(join(fullPath, files[i]));
 
-    data[i] = {
+    data.push({
       name: info.base,
       type: mime,
       size,
       userId,
       ...(folder ? { folderId: folder } : {}),
-    };
+    });
   }
 
   if (!skipDb) {
@@ -78,16 +80,25 @@ export async function importDir(
 
   const totalSize = data.reduce((acc, file) => acc + file.size, 0);
   let completed = 0;
+  let imported = 0;
 
-  const { datasource } = await import('@/lib/datasource/index.js');
-  for (let i = 0; i !== files.length; ++i) {
+  if (config.datasource.type === 'local')
+    await mkdir(config.datasource.local!.directory, { recursive: true });
+
+  const { getDatasource } = await import('@/lib/datasource/index.js');
+  const datasource = getDatasource(config);
+  if (!datasource) return console.error('No datasource configured');
+
+  for (let i = 0; i !== data.length; ++i) {
+    if (!data[i]) continue;
+
     console.log(`Uploading ${data[i].name} (${bytes(data[i].size)})...`);
 
     const start = process.hrtime();
 
-    const buff = await readFile(join(fullPath, files[i]));
-    await datasource.put(data[i].name, buff, {
+    await datasource.put(data[i].name, join(fullPath, files[i]), {
       mimetype: data[i].type ?? 'application/octet-stream',
+      noDelete: true,
     });
 
     const diff = process.hrtime(start);
@@ -104,7 +115,11 @@ export async function importDir(
     console.log(
       `Uploaded ${data[i].name} in ${timeStr} (${bytes(data[i].size)}) ${i + 1}/${files.length} ${bytes(completed)}/${bytes(totalSize)} ${uploadSpeedStr}`,
     );
+
+    ++imported;
   }
 
-  console.log('Done importing files.');
+  console.log(`Done importing ${imported} files.`);
+
+  process.exit(0);
 }

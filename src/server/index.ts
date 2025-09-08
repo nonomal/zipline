@@ -133,6 +133,10 @@ async function main() {
     }
   }
 
+  server.get<{ Params: { id: string } }>('/r/:id', async (req, res) => {
+    return res.redirect('/raw/' + req.params.id, 301);
+  });
+
   server.get<{ Params: { id: string } }>('/view/:id', async (_req, res) => {
     return res.ssr('view');
   });

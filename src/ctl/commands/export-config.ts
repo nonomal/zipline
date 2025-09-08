@@ -86,4 +86,6 @@ export async function exportConfig({ yml, showDefaults }: { yml?: boolean; showD
 
     console.log(`${yml ? '- ' : ''}${envVar.variable}=${envValue}`);
   }
+
+  process.exit(0);
 }

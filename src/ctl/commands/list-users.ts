@@ -27,4 +27,5 @@ export async function listUsers({ extra, format, id }: { extra?: string[]; forma
   });
 
   console.log(JSON.stringify(users, null, format ? 2 : 0));
+  process.exit(0);
 }
