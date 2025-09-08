@@ -2,7 +2,7 @@ import { createReadStream, existsSync } from 'fs';
 import { access, constants, copyFile, readdir, rename, rm, stat, writeFile } from 'fs/promises';
 import { join } from 'path';
 import { Readable } from 'stream';
-import { Datasource } from './Datasource';
+import { Datasource, PutOptions } from './Datasource';
 
 async function existsAndCanRW(path: string): Promise<boolean> {
   try {
@@ -29,7 +29,7 @@ export class LocalDatasource extends Datasource {
     return readStream;
   }
 
-  public async put(file: string, data: Buffer | string): Promise<void> {
+  public async put(file: string, data: Buffer | string, { noDelete }: PutOptions): Promise<void> {
     const path = join(this.dir, file);
 
     // handles if given a path to a file, it will just move it instead of doing unecessary writes
@@ -41,7 +41,8 @@ export class LocalDatasource extends Datasource {
         );
 
       await copyFile(data, path);
-      await rm(data);
+
+      if (!noDelete) await rm(data);
 
       return;
     }

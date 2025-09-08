@@ -15,7 +15,7 @@ import { Readable } from 'stream';
 import { ReadableStream } from 'stream/web';
 import Logger, { log } from '../logger';
 import { randomCharacters } from '../random';
-import { Datasource } from './Datasource';
+import { Datasource, PutOptions } from './Datasource';
 
 function isOk(code: number) {
   return code >= 200 && code < 300;
@@ -160,13 +160,7 @@ export class S3Datasource extends Datasource {
     }
   }
 
-  public async put(
-    file: string,
-    data: Buffer | string,
-    options: {
-      mimetype?: string;
-    } = {},
-  ): Promise<void> {
+  public async put(file: string, data: Buffer | string, options: PutOptions = {}): Promise<void> {
     let command = new PutObjectCommand({
       Bucket: this.options.bucket,
       Key: this.key(file),
