@@ -118,6 +118,7 @@ export default fastifyPlugin(
               .nullable()
               .refine((value) => !value || /^[a-z0-9-.]+$/.test(value), 'Invalid domain format'),
             coreReturnHttpsUrls: z.boolean(),
+            coreTrustProxy: z.boolean(),
 
             chunksEnabled: z.boolean(),
             chunksMax: zBytes,

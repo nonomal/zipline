@@ -74,6 +74,7 @@ export const schema = z.object({
       .string()
       .transform((s) => resolve(s))
       .default(join(tmpdir(), 'zipline')),
+    trustProxy: z.boolean().default(false),
   }),
   chunks: z.object({
     max: z.string().default('95mb'),

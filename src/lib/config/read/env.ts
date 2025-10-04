@@ -32,6 +32,7 @@ export const ENVS = [
   env('ssl.cert', 'SSL_CERT', 'string'),
 
   // database stuff
+  env('core.trustProxy', 'CORE_TRUST_PROXY', 'boolean', true),
   env('core.returnHttpsUrls', 'CORE_RETURN_HTTPS_URLS', 'boolean', true),
   env('core.defaultDomain', 'CORE_DEFAULT_DOMAIN', 'string', true),
   env('core.tempDirectory', 'CORE_TEMP_DIRECTORY', 'string', true),

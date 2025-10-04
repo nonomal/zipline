@@ -65,6 +65,13 @@ async function main() {
 
   await mkdir(config.core.tempDirectory, { recursive: true });
 
+  logger.debug('creating server', {
+    port: config.core.port,
+    hostname: config.core.hostname,
+    ssl: notNull(config.ssl.key, config.ssl.cert),
+    trustProxy: config.core.trustProxy,
+  });
+
   const server = fastify({
     https: notNull(config.ssl.key, config.ssl.cert)
       ? {
@@ -72,6 +79,7 @@ async function main() {
           cert: await readFile(config.ssl.cert!, 'utf8'),
         }
       : null,
+    trustProxy: config.core.trustProxy,
   });
 
   await server.register(fastifyCookie, {

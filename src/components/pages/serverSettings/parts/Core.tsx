@@ -17,11 +17,13 @@ export default function Core({
     coreReturnHttpsUrls: boolean;
     coreDefaultDomain: string | null | undefined;
     coreTempDirectory: string;
+    coreTrustProxy: boolean;
   }>({
     initialValues: {
       coreReturnHttpsUrls: false,
       coreDefaultDomain: '',
       coreTempDirectory: '/tmp/zipline',
+      coreTrustProxy: false,
     },
     enhanceGetInputProps: (payload) => ({
       disabled: data?.tampered?.includes(payload.field) || false,
@@ -45,6 +47,7 @@ export default function Core({
       coreReturnHttpsUrls: data.settings.coreReturnHttpsUrls ?? false,
       coreDefaultDomain: data.settings.coreDefaultDomain ?? '',
       coreTempDirectory: data.settings.coreTempDirectory ?? '/tmp/zipline',
+      coreTrustProxy: data.settings.coreTrustProxy ?? false,
     });
   }, [data]);
 
@@ -55,14 +58,20 @@ export default function Core({
       <Title order={2}>Core</Title>
 
       <form onSubmit={form.onSubmit(onSubmit)}>
-        <Switch
-          mt='md'
-          label='Return HTTPS URLs'
-          description='Return URLs with HTTPS protocol.'
-          {...form.getInputProps('coreReturnHttpsUrls', { type: 'checkbox' })}
-        />
-
         <SimpleGrid mt='md' cols={{ base: 1, md: 2 }} spacing='lg'>
+          <Switch
+            mt='md'
+            label='Return HTTPS URLs'
+            description='Return URLs with HTTPS protocol.'
+            {...form.getInputProps('coreReturnHttpsUrls', { type: 'checkbox' })}
+          />
+
+          <Switch
+            label='Trust Proxies'
+            description='Trust the X-Forwarded-* headers set by proxies. Only enable this if you are behind a trusted proxy (nginx, caddy, etc.). Requires a server restart.'
+            {...form.getInputProps('coreTrustProxy', { type: 'checkbox' })}
+          />
+
           <TextInput
             label='Default Domain'
             description='The domain to use when generating URLs. This value should not include the protocol.'
