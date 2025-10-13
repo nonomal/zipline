@@ -7,13 +7,13 @@ import { guess } from '@/lib/mimes';
 import { randomCharacters } from '@/lib/random';
 import { formatFileName } from '@/lib/uploader/formatFileName';
 import { UploadHeaders, UploadOptions, parseHeaders } from '@/lib/uploader/parseHeaders';
+import { Prisma } from '@/prisma/client';
 import { userMiddleware } from '@/server/middleware/user';
 import fastifyPlugin from 'fastify-plugin';
 import { readdir, rename, rm } from 'fs/promises';
 import { join } from 'path';
 import { Worker } from 'worker_threads';
 import { ApiUploadResponse, getExtension } from '.';
-import { Prisma } from '@/prisma/client';
 
 const logger = log('api').c('upload').c('partial');
 

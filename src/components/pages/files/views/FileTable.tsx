@@ -5,6 +5,8 @@ import { bytes } from '@/lib/bytes';
 import { type File } from '@/lib/db/models/file';
 import { Folder } from '@/lib/db/models/folder';
 import { Tag } from '@/lib/db/models/tag';
+import { useQueryState } from '@/lib/hooks/useQueryState';
+import { useFileTableSettingsStore } from '@/lib/store/fileTableSettings';
 import { useSettingsStore } from '@/lib/store/settings';
 import {
   ActionIcon,
@@ -34,16 +36,17 @@ import {
   IconFile,
   IconGridPatternFilled,
   IconStar,
+  IconTableOptions,
   IconTrashFilled,
 } from '@tabler/icons-react';
 import { DataTable } from 'mantine-datatable';
 import { lazy, useEffect, useReducer, useState } from 'react';
 import { Link } from 'react-router-dom';
 import useSWR from 'swr';
+import TableEditModal, { NAMES } from '../TableEditModal';
 import { bulkDelete, bulkFavorite } from '../bulk';
 import TagPill from '../tags/TagPill';
 import { useApiPagination } from '../useApiPagination';
-import { useQueryState } from '@/lib/hooks/useQueryState';
 
 const FileModal = lazy(() => import('@/components/file/DashboardFile/FileModal'));
 
@@ -53,13 +56,6 @@ type ReducerQuery = {
 };
 
 const PER_PAGE_OPTIONS = [10, 20, 50];
-
-const NAMES = {
-  name: 'Name',
-  originalName: 'Original name',
-  type: 'Type',
-  id: 'ID',
-};
 
 function SearchFilter({
   setSearchField,
@@ -88,8 +84,8 @@ function SearchFilter({
 
   return (
     <TextInput
-      label={NAMES[field]}
-      placeholder={`Search by ${NAMES[field].toLowerCase()}`}
+      label={NAMES[field as keyof typeof NAMES]}
+      placeholder={`Search by ${NAMES[field as keyof typeof NAMES].toLowerCase()}`}
       value={searchQuery[field]}
       onChange={onChange}
       size='sm'
@@ -183,6 +179,10 @@ export default function FileTable({ id }: { id?: string }) {
   const clipboard = useClipboard();
   const warnDeletion = useSettingsStore((state) => state.settings.warnDeletion);
 
+  const [tableEditOpen, setTableEditOpen] = useState(false);
+
+  const fields = useFileTableSettingsStore((state) => state.fields);
+
   const { data: folders } = useSWR<Extract<Response['/api/user/folders'], Folder[]>>(
     '/api/user/folders?noincl=true',
   );
@@ -264,6 +264,100 @@ export default function FileTable({ id }: { id?: string }) {
     }),
   });
 
+  const FIELDS = [
+    {
+      accessor: 'name',
+      sortable: true,
+      filter: (
+        <SearchFilter
+          setSearchField={setSearchField}
+          searchQuery={searchQuery}
+          setSearchQuery={setSearchQuery}
+          field='name'
+        />
+      ),
+      filtering: searchField === 'name' && searchQuery.name.trim() !== '',
+    },
+    {
+      accessor: 'originalName',
+      sortable: true,
+      filter: (
+        <SearchFilter
+          setSearchField={setSearchField}
+          searchQuery={searchQuery}
+          setSearchQuery={setSearchQuery}
+          field='originalName'
+        />
+      ),
+      filtering: searchField === 'originalName' && searchQuery.originalName.trim() !== '',
+    },
+    {
+      accessor: 'tags',
+      sortable: false,
+      width: 200,
+      render: (file: File) => (
+        <ScrollArea w={180} onClick={(e) => e.stopPropagation()}>
+          <Flex gap='sm'>
+            {file.tags!.map((tag) => (
+              <TagPill tag={tag} key={tag.id} />
+            ))}
+          </Flex>
+        </ScrollArea>
+      ),
+      filter: (
+        <TagsFilter
+          setSearchField={setSearchField}
+          searchQuery={searchQuery}
+          setSearchQuery={setSearchQuery}
+        />
+      ),
+      filtering: searchField === 'tags' && searchQuery.tags.trim() !== '',
+    },
+    {
+      accessor: 'type',
+      sortable: true,
+      filter: (
+        <SearchFilter
+          setSearchField={setSearchField}
+          searchQuery={searchQuery}
+          setSearchQuery={setSearchQuery}
+          field='type'
+        />
+      ),
+      filtering: searchField === 'type' && searchQuery.type.trim() !== '',
+    },
+    { accessor: 'size', sortable: true, render: (file: File) => bytes(file.size) },
+    {
+      accessor: 'createdAt',
+      sortable: true,
+      render: (file: File) => <RelativeDate date={file.createdAt} />,
+    },
+    {
+      accessor: 'favorite',
+      sortable: true,
+      render: (file: File) => (file.favorite ? <Text c='yellow'>Yes</Text> : 'No'),
+    },
+    {
+      accessor: 'views',
+      sortable: true,
+      render: (file: File) => file.views,
+    },
+    {
+      accessor: 'id',
+      hidden: searchField !== 'id' || searchQuery.id.trim() === '',
+      filtering: searchField === 'id' && searchQuery.id.trim() !== '',
+    },
+  ];
+
+  const visibleFields = fields.filter((f) => f.visible).map((f) => f.field);
+  const columns = FIELDS.filter((f) => visibleFields.includes(f.accessor as any));
+  columns.sort((a, b) => {
+    const aIndex = fields.findIndex((f) => f.field === a.accessor);
+    const bIndex = fields.findIndex((f) => f.field === b.accessor);
+
+    return aIndex - bIndex;
+  });
+
   useEffect(() => {
     if (data && selectedFile) {
       const file = data.page.find((x) => x.id === selectedFile.id);
@@ -295,19 +389,32 @@ export default function FileTable({ id }: { id?: string }) {
         file={selectedFile}
       />
 
+      <TableEditModal opened={tableEditOpen} onCLose={() => setTableEditOpen(false)} />
+
       <Box>
-        <Tooltip label='Search by ID'>
-          <ActionIcon
-            variant='outline'
-            onClick={() => {
-              setIdSearchOpen((open) => !open);
-            }}
-            // lol if it works it works :shrug:
-            style={{ position: 'relative', top: '-36.4px', left: '221px', margin: 0 }}
-          >
-            <IconGridPatternFilled size='1rem' />
-          </ActionIcon>
-        </Tooltip>
+        <Group>
+          <Tooltip label='Table Options'>
+            <ActionIcon
+              variant='outline'
+              onClick={() => setTableEditOpen((open) => !open)}
+              style={{ position: 'relative', top: '-36.4px', left: '221px', margin: 0 }}
+            >
+              <IconTableOptions size='1rem' />
+            </ActionIcon>
+          </Tooltip>
+          <Tooltip label='Search by ID'>
+            <ActionIcon
+              variant='outline'
+              onClick={() => {
+                setIdSearchOpen((open) => !open);
+              }}
+              // lol if it works it works :shrug:
+              style={{ position: 'relative', top: '-36.4px', left: '221px', margin: 0 }}
+            >
+              <IconGridPatternFilled size='1rem' />
+            </ActionIcon>
+          </Tooltip>
+        </Group>
 
         <Collapse in={selectedFiles.length > 0}>
           <Paper withBorder p='sm' my='sm'>
@@ -417,75 +524,7 @@ export default function FileTable({ id }: { id?: string }) {
           minHeight={200}
           records={data?.page ?? []}
           columns={[
-            {
-              accessor: 'name',
-              sortable: true,
-              filter: (
-                <SearchFilter
-                  setSearchField={setSearchField}
-                  searchQuery={searchQuery}
-                  setSearchQuery={setSearchQuery}
-                  field='name'
-                />
-              ),
-              filtering: searchField === 'name' && searchQuery.name.trim() !== '',
-            },
-            {
-              accessor: 'tags',
-              sortable: false,
-              width: 200,
-              render: (file) => (
-                <ScrollArea w={180} onClick={(e) => e.stopPropagation()}>
-                  <Flex gap='sm'>
-                    {file.tags!.map((tag) => (
-                      <TagPill tag={tag} key={tag.id} />
-                    ))}
-                  </Flex>
-                </ScrollArea>
-              ),
-              filter: (
-                <TagsFilter
-                  setSearchField={setSearchField}
-                  searchQuery={searchQuery}
-                  setSearchQuery={setSearchQuery}
-                />
-              ),
-              filtering: searchField === 'tags' && searchQuery.tags.trim() !== '',
-            },
-            {
-              accessor: 'type',
-              sortable: true,
-              filter: (
-                <SearchFilter
-                  setSearchField={setSearchField}
-                  searchQuery={searchQuery}
-                  setSearchQuery={setSearchQuery}
-                  field='type'
-                />
-              ),
-              filtering: searchField === 'type' && searchQuery.type.trim() !== '',
-            },
-            { accessor: 'size', sortable: true, render: (file) => bytes(file.size) },
-            {
-              accessor: 'createdAt',
-              sortable: true,
-              render: (file) => <RelativeDate date={file.createdAt} />,
-            },
-            {
-              accessor: 'favorite',
-              sortable: true,
-              render: (file) => (file.favorite ? <Text c='yellow'>Yes</Text> : 'No'),
-            },
-            {
-              accessor: 'views',
-              sortable: true,
-              render: (file) => file.views,
-            },
-            {
-              accessor: 'id',
-              hidden: searchField !== 'id' || searchQuery.id.trim() === '',
-              filtering: searchField === 'id' && searchQuery.id.trim() !== '',
-            },
+            ...columns,
             {
               accessor: 'actions',
               textAlign: 'right',
