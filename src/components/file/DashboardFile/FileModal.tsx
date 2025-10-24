@@ -234,15 +234,15 @@ export default function FileModal({
                   </Title>
                   <Combobox
                     zIndex={90000}
+                    withinPortal={false}
                     store={tagsCombobox}
                     onOptionSubmit={handleValueSelect}
-                    withinPortal={false}
                   >
                     <Combobox.DropdownTarget>
                       <PillsInput
                         onBlur={() => triggerSave()}
                         pointer
-                        onClick={() => tagsCombobox.toggleDropdown()}
+                        onClick={() => tagsCombobox.openDropdown()}
                       >
                         <Pill.Group>
                           {values.length > 0 ? (
@@ -254,9 +254,14 @@ export default function FileModal({
                           <Combobox.EventsTarget>
                             <PillsInput.Field
                               type='hidden'
+                              onFocus={() => tagsCombobox.openDropdown()}
                               onBlur={() => tagsCombobox.closeDropdown()}
                               onKeyDown={(event) => {
-                                if (event.key === 'Backspace') {
+                                if (
+                                  event.key === 'Backspace' &&
+                                  value.length > 0 &&
+                                  event.currentTarget.value === ''
+                                ) {
                                   event.preventDefault();
                                   handleValueRemove(value[value.length - 1]);
                                 }
@@ -285,9 +290,7 @@ export default function FileModal({
                             </Combobox.Option>
                           ))
                         ) : (
-                          <Combobox.Option value='no-tags' disabled>
-                            No tags found, create one outside of this menu.
-                          </Combobox.Option>
+                          <Combobox.Empty>No tags found, create one outside of this menu.</Combobox.Empty>
                         )}
                       </Combobox.Options>
                     </Combobox.Dropdown>
@@ -310,8 +313,8 @@ export default function FileModal({
                     </Button>
                   ) : (
                     <Combobox
-                      store={folderCombobox}
                       withinPortal={false}
+                      store={folderCombobox}
                       onOptionSubmit={(value) => handleAdd(value)}
                     >
                       <Combobox.Target>
