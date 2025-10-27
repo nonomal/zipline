@@ -20,7 +20,7 @@ import { fastifyRateLimit } from '@fastify/rate-limit';
 import { fastifySensible } from '@fastify/sensible';
 import { fastifyStatic } from '@fastify/static';
 import fastify from 'fastify';
-import { mkdir, readFile } from 'fs/promises';
+import { appendFile, mkdir, readFile, writeFile } from 'fs/promises';
 import ms, { StringValue } from 'ms';
 import { version } from '../../package.json';
 import { checkRateLimit } from './plugins/checkRateLimit';
@@ -284,6 +284,24 @@ async function main() {
   }
 
   tasks.start();
+
+  if (process.env.DEBUG_MONITOR_MEMORY === 'true') {
+    await writeFile('.memory.log.json', '', 'utf8');
+    setInterval(async () => {
+      const mu = process.memoryUsage();
+      const cpu = process.cpuUsage();
+
+      const entry = {
+        timestamp: new Date().toISOString(),
+        data: {
+          memoryUsage: mu,
+          cpuUsage: cpu,
+        },
+      };
+
+      await appendFile('.memory.log.json', JSON.stringify(entry) + '\n', 'utf8');
+    }, 1000);
+  }
 }
 
 main();
