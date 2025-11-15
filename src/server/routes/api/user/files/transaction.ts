@@ -24,11 +24,16 @@ type Body = {
 
 const logger = log('api').c('user').c('files').c('transaction');
 
-function checkInteraction(current: Role, roles: Role[]) {
+function checkInteraction(
+  current: { id: string; role: Role },
+  roles: { id: string; role: Role }[],
+): number[] {
   const indices: number[] = [];
 
   for (let i = 0; i !== roles.length; ++i) {
-    if (!canInteract(current, roles[i])) {
+    if (roles[i].id === current.id) continue;
+
+    if (!canInteract(current.role, roles[i].role)) {
       indices.push(i);
     }
   }
@@ -58,8 +63,8 @@ export default fastifyPlugin(
           });
 
           const invalids = checkInteraction(
-            req.user.role,
-            toFavoriteFiles.map((f) => f.User?.role ?? 'USER'),
+            { id: req.user.id, role: req.user.role },
+            toFavoriteFiles.map((f) => ({ id: f.userId ?? '', role: f.User?.role ?? 'USER' })),
           );
           if (invalids.length > 0)
             return res.forbidden(`You don't have the permission to modify files[${invalids.join(', ')}]`);
@@ -147,8 +152,8 @@ export default fastifyPlugin(
         });
 
         const invalids = checkInteraction(
-          req.user.role,
-          toDeleteFiles.map((f) => f.User?.role ?? 'USER'),
+          { id: req.user.id, role: req.user.role },
+          toDeleteFiles.map((f) => ({ id: f.userId ?? '', role: f.User?.role ?? 'USER' })),
         );
         if (invalids.length > 0)
           return res.forbidden(`You don't have the permission to delete files[${invalids.join(', ')}]`);
