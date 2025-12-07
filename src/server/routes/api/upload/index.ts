@@ -175,6 +175,7 @@ export default fastifyPlugin(
             quality: options.imageCompression.percent,
             type: options.imageCompression.type,
           });
+
           logger.c('compress').debug(`compressed file ${file.filename}`);
         }
 
@@ -191,7 +192,7 @@ export default fastifyPlugin(
 
         const data: Prisma.FileCreateInput = {
           name: `${fileName}${compressed ? '.' + compressed.ext : extension}`,
-          size: tempFileStats.size,
+          size: compressed?.buffer?.length ?? tempFileStats.size,
           type: compressed?.mimetype ?? mimetype,
           User: { connect: { id: req.user ? req.user.id : options.folder ? folder?.userId : undefined } },
         };
@@ -207,7 +208,9 @@ export default fastifyPlugin(
           select: fileSelect,
         });
 
-        await datasource.put(fileUpload.name, file.filepath, { mimetype: fileUpload.type });
+        await datasource.put(fileUpload.name, compressed?.buffer ?? file.filepath, {
+          mimetype: fileUpload.type,
+        });
 
         const responseUrl = `${domain}${config.files.route === '/' || config.files.route === '' ? '' : `${config.files.route}`}/${fileUpload.name}`;
 
@@ -222,7 +225,7 @@ export default fastifyPlugin(
 
         logger.info(
           `${req.user ? req.user.username : '[anonymous folder upload]'} uploaded ${fileUpload.name}`,
-          { size: bytes(fileUpload.size), ip: req.ip },
+          { size: bytes(compressed?.buffer?.length ?? fileUpload.size), ip: req.ip },
         );
 
         await onUpload(config, {

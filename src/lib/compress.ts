@@ -7,6 +7,7 @@ export type CompressType = (typeof COMPRESS_TYPES)[number];
 export type CompressResult = {
   mimetype: string;
   ext: CompressType;
+  buffer: Buffer;
 };
 
 export type CompressOptions = {
@@ -30,6 +31,7 @@ export async function compressFile(filePath: string, options: CompressOptions): 
   const result: CompressResult = {
     mimetype: '',
     ext: 'jpg',
+    buffer: Buffer.alloc(0),
   };
 
   let buffer: Buffer;
@@ -59,7 +61,8 @@ export async function compressFile(filePath: string, options: CompressOptions): 
       break;
   }
 
-  await sharp(buffer, { animated }).toFile(filePath);
-
-  return result;
+  return {
+    ...result,
+    buffer,
+  };
 }
