@@ -273,7 +273,7 @@ export default fastifyPlugin(
         }
 
         return res
-          .header('Content-Disposition', `attachment; filename="zipline_export_${Date.now()}.json"`)
+          .header('Content-Disposition', `attachment; filename="zipline4_export_${Date.now()}.json"`)
           .type('application/json')
           .send(export4);
       },

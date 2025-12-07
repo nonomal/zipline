@@ -3,6 +3,7 @@ import { Button, FileButton, Modal, Pill } from '@mantine/core';
 import { showNotification } from '@mantine/notifications';
 import { IconDatabaseImport, IconDatabaseOff, IconUpload, IconX } from '@tabler/icons-react';
 import { useEffect, useState } from 'react';
+import Export4Details from './Export4Details';
 
 export default function ImportV4Button() {
   const [open, setOpen] = useState(false);
@@ -88,7 +89,7 @@ export default function ImportV4Button() {
 
         {file && export4 && (
           <>
-            <pre>{JSON.stringify(export4, null, 2)}</pre>
+            <Export4Details export4={export4} />
           </>
         )}
 
