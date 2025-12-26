@@ -384,6 +384,23 @@ export default fastifyPlugin(
           .refine((data) => !data.ratelimitWindow || (data.ratelimitMax && data.ratelimitMax > 0), {
             message: 'ratelimitMax must be set if ratelimitWindow is set',
             path: ['ratelimitMax'],
+          })
+          .superRefine((data, ctx) => {
+            if (!data.filesDefaultExpiration || !data.filesMaxExpiration) return;
+
+            const def = ms(data.filesDefaultExpiration as StringValue);
+            const max = ms(data.filesMaxExpiration as StringValue);
+
+            if (def > max) {
+              ctx.addIssue({
+                code: 'custom',
+                message: 'filesDefaultExpiration must be less than or equal to filesMaxExpiration',
+                path: ['filesDefaultExpiration'],
+              });
+            }
+          })
+          .refine((data) => Object.keys(data).length > 0, {
+            message: 'No settings provided to update',
           });
 
         const result = settingsBodySchema.safeParse(req.body);
@@ -398,42 +415,13 @@ export default fastifyPlugin(
           });
         }
 
-        const parsed = { ...result.data };
-
-        try {
-          if (parsed.filesDefaultExpiration && parsed.filesMaxExpiration) {
-            const parsedDefault = ms(String(parsed.filesDefaultExpiration) as StringValue) as number;
-            const parsedMaxAfter = ms(String(parsed.filesMaxExpiration) as StringValue) as number;
-            if (
-              !isNaN(Number(parsedDefault)) &&
-              !isNaN(Number(parsedMaxAfter)) &&
-              parsedDefault > parsedMaxAfter
-            ) {
-              // set default to the provided max value
-              parsed.filesDefaultExpiration = String(parsed.filesMaxExpiration);
-            }
-          }
-        } catch (e) {
-          // If normalization fails, log the error and proceed with original values.
-          logger.debug('error normalizing expiration settings', { err: e });
-        }
-
-        // Use the keys present in the Zod-parsed object as the allowed set.
-        const allowedFromSchema = new Set(Object.keys(parsed));
-        const filteredData = Object.fromEntries(
-          Object.entries(parsed).filter(([k]) => allowedFromSchema.has(k)),
-        );
-
-        if (Object.keys(filteredData).length === 0) {
-          return res.status(400).send({ statusCode: 400, message: 'No valid fields to update' });
-        }
         const newSettings = await prisma.zipline.update({
           where: {
             id: settings.id,
           },
           // @ts-ignore
           data: {
-            ...filteredData,
+            ...result.data,
           },
           omit: {
             createdAt: true,
