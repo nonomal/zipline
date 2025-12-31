@@ -15,6 +15,7 @@ import {
   Stack,
   Text,
 } from '@mantine/core';
+import { useMediaQuery } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
 import { IconShieldLockFilled } from '@tabler/icons-react';
 import { useState } from 'react';
@@ -23,6 +24,7 @@ import useSWR, { mutate } from 'swr';
 import { useShallow } from 'zustand/shallow';
 
 export default function TwoFAButton() {
+  const size = useMediaQuery('(max-width: 600px)') ? 'sm' : 'xl';
   const [user, setUser] = useUserStore(useShallow((state) => [state.user, state.setUser]));
 
   const [totpOpen, setTotpOpen] = useState(false);
@@ -140,13 +142,21 @@ export default function TwoFAButton() {
                 >
                   Google Authenticator
                 </Anchor>
-                , and{' '}
+                ,{' '}
                 <Anchor
                   component={Link}
                   to='https://www.microsoft.com/en-us/security/mobile-authenticator-app'
                   target='_blank'
                 >
                   Microsoft Authenticator
+                </Anchor>
+                , and{' '}
+                <Anchor
+                  component={Link}
+                  to='https://support.apple.com/guide/iphone/automatically-fill-in-verification-codes-ipha6173c19f/ios'
+                  target='_blank'
+                >
+                  Apple Passwords
                 </Anchor>
                 .
               </Text>
@@ -189,7 +199,7 @@ export default function TwoFAButton() {
               autoFocus={true}
               error={!!pinError}
               disabled={pinDisabled}
-              size='xl'
+              size={size}
             />
           </Center>
           {pinError && (
