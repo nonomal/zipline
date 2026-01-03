@@ -83,6 +83,20 @@ async function main() {
     trustProxy: config.core.trustProxy,
   });
 
+  if (process.env.DEBUG_EVENT_EMITTER) {
+    server.addHook('onSend', async (req, res) => {
+      const counts = {
+        listeners: res.raw.eventNames(),
+        close: res.raw.listenerCount('close'),
+        data: res.raw.listenerCount('data'),
+        end: res.raw.listenerCount('end'),
+        error: res.raw.listenerCount('error'),
+      };
+
+      logger.debug('event emitter counts', { path: req.url, ...counts });
+    });
+  }
+
   await server.register(fastifyCookie, {
     secret: config.core.secret,
     hook: 'onRequest',

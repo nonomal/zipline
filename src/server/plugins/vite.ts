@@ -32,7 +32,7 @@ async function vitePlugin(fastify: FastifyInstance) {
     console.log('Vite server created in development mode');
 
     fastify.decorate('vite', vite);
-    fastify.addHook('onRequest', async (req, reply) => {
+    fastify.addHook('preHandler', async (req, reply) => {
       const url = req.raw.url || '';
 
       const reserved = [
@@ -41,9 +41,7 @@ async function vitePlugin(fastify: FastifyInstance) {
         config.urls.route,
       ].some((route) => url.startsWith(route));
 
-      if (reserved) {
-        return;
-      }
+      if (reserved) return;
 
       reply.hijack();
 
