@@ -1,14 +1,14 @@
 import { Response } from '@/lib/api/response';
+import { copyLink } from '@/lib/client/copyLink';
 import type { SafeConfig } from '@/lib/config/safe';
 import { Url } from '@/lib/db/models/url';
 import { fetchApi } from '@/lib/fetchApi';
 import { formatRootUrl } from '@/lib/url';
-import { conditionalWarning } from '@/lib/warningModal';
-import { Anchor } from '@mantine/core';
+import { conditionalWarning } from '@/lib/client/warningModal';
+import { getDomain } from '@/lib/client/webDomain';
 import { useClipboard } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
-import { IconCheck, IconCopy, IconLinkOff } from '@tabler/icons-react';
-import { Link } from 'react-router-dom';
+import { IconCheck, IconLinkOff } from '@tabler/icons-react';
 import { mutate } from 'swr';
 
 export async function deleteUrl(warnDeletion: boolean, url: Url) {
@@ -20,20 +20,9 @@ export async function deleteUrl(warnDeletion: boolean, url: Url) {
 }
 
 export function copyUrl(url: Url, config: SafeConfig, clipboard: ReturnType<typeof useClipboard>) {
-  const domain = `${window.location.protocol}//${window.location.host}`;
+  const urlFormatted = getDomain(formatRootUrl(config.urls.route, url.vanity ?? url.code));
 
-  clipboard.copy(`${domain}${formatRootUrl(config.urls.route, url.vanity ?? url.code)}`);
-
-  notifications.show({
-    title: 'Copied link',
-    message: (
-      <Anchor component={Link} to={formatRootUrl(config.urls.route, url.vanity ?? url.code)}>
-        {`${domain}${formatRootUrl(config.urls.route, url.vanity ?? url.code)}`}
-      </Anchor>
-    ),
-    color: 'green',
-    icon: <IconCopy size='1rem' />,
-  });
+  copyLink(urlFormatted, clipboard);
 }
 
 async function handleDeleteUrl(url: Url) {
@@ -58,10 +47,10 @@ async function handleDeleteUrl(url: Url) {
     });
   }
 
-  mutateURls();
+  mutateUrls();
 }
 
-function mutateURls() {
+function mutateUrls() {
   mutate('/api/user/urls');
   mutate((key) => (key as Record<any, any>)?.key === '/api/user/urls');
 }

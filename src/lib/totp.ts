@@ -1,12 +1,20 @@
-import { authenticator } from 'otplib';
+import { generateSecret, generateURI, verify } from 'otplib';
 import { toDataURL } from 'qrcode';
 
-export function generateKey() {
-  return authenticator.generateSecret(16);
+export function generateKey(): string {
+  return generateSecret({
+    length: 16,
+  });
 }
 
-export function verifyTotpCode(code: string, secret: string) {
-  return authenticator.check(code, secret);
+export async function verifyTotpCode(code: string, secret: string): Promise<boolean> {
+  const result = await verify({
+    secret,
+    token: code,
+    epochTolerance: 30,
+  });
+
+  return result.valid;
 }
 
 export function totpQrcode({
@@ -17,8 +25,12 @@ export function totpQrcode({
   issuer?: string;
   username: string;
   secret: string;
-}) {
-  return toDataURL(authenticator.keyuri(username, issuer ?? 'Zipline', secret), {
-    width: 180,
-  });
+}): Promise<string> {
+  return toDataURL(
+    generateURI({
+      secret,
+      issuer: issuer ?? 'Zipline',
+      label: username,
+    }),
+  );
 }

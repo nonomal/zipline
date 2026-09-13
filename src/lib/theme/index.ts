@@ -15,7 +15,7 @@ import {
 export type ZiplineTheme = MantineTheme & {
   id: string;
   name: string;
-  colorScheme: string;
+  colorScheme: 'light' | 'dark';
   mainBackgroundColor: string;
   extraCss?: string;
 };
@@ -47,6 +47,7 @@ export function themeComponents(theme: ZiplineTheme): MantineThemeOverride {
   return {
     ...rest,
     variantColorResolver: variantColorResolver,
+    defaultRadius: 'md',
     components: {
       ...components,
       AppShell: AppShell.extend({

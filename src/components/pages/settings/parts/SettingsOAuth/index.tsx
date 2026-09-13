@@ -1,10 +1,10 @@
 import { useConfig } from '@/components/ConfigProvider';
 import { Response } from '@/lib/api/response';
+import { useUserStore } from '@/lib/client/store/user';
 import { fetchApi } from '@/lib/fetchApi';
-import { findProvider } from '@/lib/oauth/providerUtil';
-import { useUserStore } from '@/lib/store/user';
+import { findProvider } from '@/lib/oauth/providers';
 import { darken } from '@/lib/theme/color';
-import type { OAuthProviderType } from '@/prisma/client';
+import type { OAuthProviderType } from '@/lib/db/enums';
 import { Button, ButtonProps, Paper, SimpleGrid, Text, Title, useMantineTheme } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import {
@@ -68,6 +68,12 @@ function OAuthButton({ provider, linked }: { provider: OAuthProviderType; linked
       '--z-bol-color': darken(t.colors?.[provider.toLowerCase()]?.[0] ?? '', 0.2, t),
     },
     className: !linked ? styles.button : undefined,
+    styles: {
+      label: {
+        whiteSpace: 'normal',
+        textAlign: 'center',
+      },
+    },
   };
 
   return linked ? (

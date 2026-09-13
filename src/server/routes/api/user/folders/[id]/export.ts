@@ -1,68 +1,110 @@
+import { ApiError } from '@/lib/api/errors';
 import { datasource } from '@/lib/datasource';
-import { prisma } from '@/lib/db';
+import { getFolderMetadata, getOwnedTree, type FolderTree } from '@/lib/db/models/folder';
 import { log } from '@/lib/logger';
 import { userMiddleware } from '@/server/middleware/user';
-import archiver from 'archiver';
-import fastifyPlugin from 'fastify-plugin';
+import typedPlugin from '@/server/typedPlugin';
+import archiver, { Archiver } from 'archiver';
+import z from 'zod';
 
 export type ApiUserFoldersIdExportResponse = null;
 
-type Params = {
-  id: string;
-};
-
 const logger = log('api').c('user').c('folders').c('[id]').c('export');
 
+async function addFolderToZip(
+  zip: Archiver,
+  folder: FolderTree,
+  basePath: string,
+  logger: ReturnType<typeof log>,
+): Promise<number> {
+  let fileCount = 0;
+
+  for (const file of folder.files) {
+    const stream = await datasource.get(file.name);
+    if (!stream) {
+      logger.warn('failed to get file stream for folder export', { file: file.id, folder: folder.id });
+      continue;
+    }
+
+    const filePath = basePath ? `${basePath}/${file.name}` : file.name;
+    zip.append(stream, { name: filePath });
+    fileCount++;
+  }
+
+  for (const child of folder.children) {
+    const childPath = basePath ? `${basePath}/${child.name}` : child.name;
+    fileCount += await addFolderToZip(zip, child, childPath, logger);
+  }
+
+  return fileCount;
+}
+
 export const PATH = '/api/user/folders/:id/export';
-export default fastifyPlugin(
-  (server, _, done) => {
-    server.get<{ Params: Params }>(PATH, { preHandler: [userMiddleware] }, async (req, res) => {
-      const { id } = req.params;
-
-      const folder = await prisma.folder.findUnique({
-        where: {
-          id,
+export default typedPlugin(
+  async (server) => {
+    server.get(
+      PATH,
+      {
+        schema: {
+          description: 'Download a ZIP archive of all files contained in a folder and its subfolders.',
+          params: z.object({ id: z.string() }),
+          tags: ['auth'],
         },
-        include: {
-          files: true,
-        },
-      });
-      if (!folder) return res.notFound('Folder not found');
-      if (req.user.id !== folder.userId) return res.forbidden('You do not own this folder');
+        preHandler: [userMiddleware],
+      },
+      async (req, res) => {
+        const { id } = req.params;
 
-      if (!folder.files.length) return res.badRequest("Can't export an empty folder.");
+        const folder = await getFolderMetadata(id);
 
-      logger.info(`folder export requested: ${folder.name}`, { user: req.user.id, folder: folder.id });
+        if (!folder) throw new ApiError(4001);
+        if (req.user.id !== folder.userId) throw new ApiError(3011);
 
-      res.hijack();
+        const folderTree = await getOwnedTree(id, req.user.id);
+        if (!folderTree) throw new ApiError(4001);
 
-      const zip = archiver('zip', {
-        zlib: { level: 9 },
-      });
+        logger.info(`folder export requested: ${folder.name}`, { user: req.user.id, folder: folder.id });
 
-      zip.pipe(res.raw);
+        res.hijack();
 
-      for (const file of folder.files) {
-        const stream = await datasource.get(file.name);
-        if (!stream) {
-          logger.warn('failed to get file stream for folder export', { file: file.id, folder: folder.id });
-          continue;
+        const dl = `${folder.name}.zip`;
+        const sanitized = dl.replace(/[^\x20-\x7e]/g, '_').replace(/["\\]/g, '_');
+
+        res.raw.setHeader('Content-Type', 'application/zip');
+        res.raw.setHeader(
+          'Content-Disposition',
+          `attachment; filename="${sanitized}"; filename*=UTF-8''${encodeURIComponent(dl)}`,
+        );
+
+        const zip = archiver('zip', {
+          zlib: { level: 9 },
+        });
+
+        zip.pipe(res.raw);
+
+        const fileCount = await addFolderToZip(zip, folderTree, '', logger);
+
+        if (fileCount === 0) {
+          logger.warn('folder export has no files, aborting.', { folder: folder.id });
+
+          zip.abort();
         }
 
-        zip.append(stream, { name: file.name });
-      }
+        zip.on('error', (err) => {
+          logger.error('error during folder export zip creation', { folder: folder.id }).error(err as Error);
+        });
 
-      zip.on('error', (err) => {
-        logger.error('error during folder export zip creation', { folder: folder.id }).error(err as Error);
-      });
+        zip.on('finish', () => {
+          logger.info(`folder export completed: ${folder.name}`, {
+            user: req.user.id,
+            folder: folder.id,
+            files: fileCount,
+          });
+        });
 
-      zip.on('finish', () => {
-        logger.info(`folder export completed: ${folder.name}`, { user: req.user.id, folder: folder.id });
-      });
-
-      await zip.finalize();
-    });
-    done();
+        await zip.finalize();
+      },
+    );
   },
   { name: PATH },
 );

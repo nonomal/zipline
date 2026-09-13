@@ -6,20 +6,22 @@ import {
   DeleteObjectsCommand,
   GetObjectCommand,
   HeadObjectCommand,
-  ListObjectsCommand,
+  ListObjectsV2Command,
   PutObjectCommand,
   S3Client,
   UploadPartCopyCommand,
 } from '@aws-sdk/client-s3';
 import { NodeHttpHandler } from '@smithy/node-http-handler';
+import { Upload } from '@aws-sdk/lib-storage';
 import { createReadStream } from 'fs';
+import { stat } from 'fs/promises';
 import { Agent as HttpAgent } from 'http';
 import { Agent as HttpsAgent } from 'https';
 import { Readable } from 'stream';
 import { ReadableStream } from 'stream/web';
 import Logger, { log } from '../logger';
 import { randomCharacters } from '../random';
-import { Datasource, PutOptions } from './Datasource';
+import { Datasource, ListOptions, PutOptions } from './Datasource';
 
 function isOk(code: number) {
   return code >= 200 && code < 300;
@@ -63,6 +65,8 @@ export class S3Datasource extends Datasource {
           keepAlive: true,
         }),
       }),
+      requestChecksumCalculation: 'WHEN_REQUIRED',
+      responseChecksumValidation: 'WHEN_REQUIRED',
     });
 
     this.ensureReadWriteAccess();
@@ -165,36 +169,49 @@ export class S3Datasource extends Datasource {
   }
 
   public async put(file: string, data: Buffer | string, options: PutOptions = {}): Promise<void> {
-    let command = new PutObjectCommand({
-      Bucket: this.options.bucket,
-      Key: this.key(file),
-      Body: data,
-      ...(options.mimetype ? { ContentType: options.mimetype } : {}),
-    });
+    try {
+      if (typeof data === 'string') {
+        const size = await stat(data).then((file) => file.size);
+        if (size > 25 * 1024 * 1024) {
+          // 25mb
+          this.logger.debug('putting object with multipart upload', { file, key: this.key(file) });
 
-    if (typeof data === 'string') {
-      const readStream = createReadStream(data);
-      command = new PutObjectCommand({
+          try {
+            const upload = new Upload({
+              client: this.client,
+              params: {
+                Bucket: this.options.bucket,
+                Key: this.key(file),
+                Body: createReadStream(data),
+                ...(options.mimetype ? { ContentType: options.mimetype } : {}),
+              },
+              leavePartsOnError: false,
+            });
+
+            await upload.done();
+            return;
+          } catch (error) {
+            this.logger.warn('multipart upload failed, retrying with a single request', {
+              error: error instanceof Error ? error.message : error,
+            });
+          }
+        }
+      }
+
+      const command = new PutObjectCommand({
         Bucket: this.options.bucket,
         Key: this.key(file),
-        Body: readStream,
+        Body: typeof data === 'string' ? createReadStream(data) : data,
         ...(options.mimetype ? { ContentType: options.mimetype } : {}),
       });
-
-      this.logger.debug('putting object from stream', { file, key: this.key(file) });
-    }
-
-    try {
       const res = await this.client.send(command);
 
       if (!isOk(res.$metadata.httpStatusCode || 0)) {
-        this.logger.error(
-          'there was an error while putting object',
-          res.$metadata as Record<string, unknown>,
-        );
+        throw new Error(`S3 put failed with status ${res.$metadata.httpStatusCode ?? 'unknown'}`);
       }
     } catch (e) {
       this.logger.error('there was an error while putting object', e as Record<string, unknown>);
+      throw e;
     }
   }
 
@@ -254,23 +271,31 @@ export class S3Datasource extends Datasource {
   }
 
   public async totalSize(): Promise<number> {
-    const command = new ListObjectsCommand({
-      Bucket: this.options.bucket,
-      Prefix: this.options.subdirectory ?? undefined,
-      Delimiter: this.options.subdirectory ? undefined : '/',
-    });
+    let total = 0;
+    let continuationToken: string | undefined;
 
     try {
-      const res = await this.client.send(command);
+      do {
+        const res = await this.client.send(
+          new ListObjectsV2Command({
+            Bucket: this.options.bucket,
+            Prefix: this.options.subdirectory ?? undefined,
+            ContinuationToken: continuationToken,
+          }),
+        );
 
-      if (!isOk(res.$metadata.httpStatusCode || 0)) {
-        this.logger.error('there was an error while listing objects');
-        this.logger.error('error metadata', res.$metadata as Record<string, unknown>);
+        if (!isOk(res.$metadata.httpStatusCode || 0)) {
+          this.logger.error('there was an error while listing objects');
+          this.logger.error('error metadata', res.$metadata as Record<string, unknown>);
 
-        return 0;
-      }
+          return 0;
+        }
 
-      return res.Contents?.reduce((acc, obj) => acc + Number(obj.Size), 0) ?? 0;
+        total += res.Contents?.reduce((acc, obj) => acc + Number(obj.Size ?? 0), 0) ?? 0;
+        continuationToken = res.IsTruncated ? res.NextContinuationToken : undefined;
+      } while (continuationToken);
+
+      return total;
     } catch (e) {
       this.logger.error('there was an error while listing objects');
       this.logger.error('error metadata', e as Record<string, unknown>);
@@ -414,6 +439,25 @@ export class S3Datasource extends Datasource {
         throw new Error('Failed to complete multipart upload');
       }
 
+      const deleteCommand = new DeleteObjectCommand({
+        Bucket: this.options.bucket,
+        Key: this.key(from),
+      });
+
+      try {
+        const deleteRes = await this.client.send(deleteCommand);
+        if (!isOk(deleteRes.$metadata.httpStatusCode || 0)) {
+          this.logger.error('there was an error while deleting old object');
+          this.logger.error('error metadata', deleteRes.$metadata as Record<string, unknown>);
+          throw new Error('Failed to delete old object');
+        }
+      } catch (e) {
+        this.logger.error('there was an error while deleting old object');
+        this.logger.error('error metadata', e as Record<string, unknown>);
+
+        throw new Error('Failed to delete old object');
+      }
+
       return;
     }
 
@@ -447,6 +491,48 @@ export class S3Datasource extends Datasource {
       this.logger.error('error metadata', e as Record<string, unknown>);
 
       throw new Error('Failed to rename object');
+    }
+  }
+
+  public async list(options: ListOptions = { prefix: '' }): Promise<string[]> {
+    const files: string[] = [];
+    let continuationToken: string | undefined;
+
+    try {
+      do {
+        const res = await this.client.send(
+          new ListObjectsV2Command({
+            Bucket: this.options.bucket,
+            Prefix: this.key(options.prefix || ''),
+            Delimiter: this.options.subdirectory ? undefined : '/',
+            ContinuationToken: continuationToken,
+          }),
+        );
+
+        if (!isOk(res.$metadata.httpStatusCode || 0)) {
+          this.logger.error('there was an error while listing objects');
+          this.logger.error('error metadata', res.$metadata as Record<string, unknown>);
+
+          return [];
+        }
+
+        for (const obj of res.Contents ?? []) {
+          if (this.options.subdirectory) {
+            files.push(obj.Key!.replace(this.options.subdirectory + '/', ''));
+          } else {
+            files.push(obj.Key!);
+          }
+        }
+
+        continuationToken = res.IsTruncated ? res.NextContinuationToken : undefined;
+      } while (continuationToken);
+
+      return files;
+    } catch (e) {
+      this.logger.error('there was an error while listing objects');
+      this.logger.error('error metadata', e as Record<string, unknown>);
+
+      return [];
     }
   }
 }

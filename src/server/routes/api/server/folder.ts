@@ -1,51 +1,99 @@
-import { prisma } from '@/lib/db';
-import { fileSelect } from '@/lib/db/models/file';
-import { cleanFolder, Folder } from '@/lib/db/models/folder';
-import fastifyPlugin from 'fastify-plugin';
+import { ApiError } from '@/lib/api/errors';
+import { db } from '@/lib/db';
+import { File, fileColumns, filePasswordExtra, fileSchema, formatFiles } from '@/lib/db/models/file';
+import { Folder, getPublicFolder, getPublicParentChain, publicFolderSchema } from '@/lib/db/models/folder';
+import { files } from '@/lib/db/schema';
+import { paginationQs } from '@/lib/validation';
+import typedPlugin from '@/server/typedPlugin';
+import { eq } from 'drizzle-orm';
+import z from 'zod';
 
-export type ApiServerFolderResponse = Partial<Folder>;
-
-type Params = {
-  id: string;
-};
-
-type Query = {
-  uploads?: boolean;
+export type ApiServerFolderResponse = {
+  folder: Partial<Folder>;
+  page: File[];
+  total: number;
+  pages: number;
 };
 
 export const PATH = '/api/server/folder/:id';
-export default fastifyPlugin(
-  (server, _, done) => {
-    server.get<{ Params: Params; Querystring: Query }>(PATH, async (req, res) => {
-      const { id } = req.params;
-      const { uploads } = req.query;
-
-      const folder = await prisma.folder.findUnique({
-        where: {
-          id: id,
-        },
-        include: {
-          files: {
-            select: {
-              ...fileSelect,
-              password: true,
-              tags: false,
-            },
-            orderBy: {
-              createdAt: 'desc',
-            },
+export default typedPlugin(
+  async (server) => {
+    server.get(
+      PATH,
+      {
+        schema: {
+          description: 'Fetch a folder by ID/name. Behavior varies based on public and allowUploads flags.',
+          params: z.object({
+            id: z.string(),
+          }),
+          querystring: paginationQs
+            .pick({
+              page: true,
+              perpage: true,
+              sortBy: true,
+              order: true,
+            })
+            .partial({ page: true }),
+          response: {
+            200: z.object({
+              folder: publicFolderSchema.partial(),
+              page: z.array(fileSchema),
+              total: z.number(),
+              pages: z.number(),
+            }),
           },
         },
-      });
+      },
+      async (req, res) => {
+        const { id } = req.params;
 
-      if (!folder) return res.notFound();
+        const folder = await getPublicFolder(id);
 
-      if ((uploads && !folder.allowUploads) || (!uploads && !folder.public)) return res.notFound();
+        if (!folder) throw new ApiError(9002);
+        if (!folder.public && !folder.allowUploads) throw new ApiError(9002);
 
-      return res.send(cleanFolder(folder, true));
-    });
+        const { page, perpage, sortBy, order } = req.query;
+        if ((!page && folder.allowUploads) || !folder.public) {
+          return res.send({
+            folder: {
+              id: folder.id,
+              name: folder.name,
+              allowUploads: folder.allowUploads,
+              public: folder.public,
+            },
+            page: [],
+            total: 0,
+            pages: 0,
+          });
+        }
 
-    done();
+        const where = eq(files.folderId, folder.id);
+        const total = await db.$count(files, where);
+        const pages = total === 0 ? 0 : Math.ceil(total / perpage);
+
+        const rows = await db.query.files.findMany({
+          columns: fileColumns,
+          extras: filePasswordExtra,
+          where: { folderId: folder.id },
+          orderBy: (file, { asc, desc }) => (order === 'asc' ? asc(file[sortBy]) : desc(file[sortBy])),
+          offset: (Number(page) - 1) * perpage,
+          limit: perpage,
+          with: { thumbnail: { columns: { path: true } } },
+        });
+        const folderFiles = formatFiles(rows);
+
+        if (folder.parentId) {
+          folder.parent = await getPublicParentChain(folder.parentId);
+        }
+
+        return res.send({
+          folder,
+          page: folderFiles,
+          total,
+          pages,
+        });
+      },
+    );
   },
   { name: PATH },
 );

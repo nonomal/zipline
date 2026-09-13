@@ -3,16 +3,16 @@ import fastifyPlugin from 'fastify-plugin';
 import { readFile } from 'fs/promises';
 import { resolve } from 'path';
 import { createServer } from 'vite';
-import { reservedRoutes } from '../routes/api/server/settings';
+import { RESERVED_ROUTES } from '@/lib/reservedRoutes';
 import { config } from '@/lib/config';
 import fastifyStatic from '@fastify/static';
 import { renderHtml } from '@/lib/ssr/renderHtml';
 import { readThemes } from '@/lib/theme/file';
 import { ZIPLINE_SSR_INSERT, ZIPLINE_SSR_META } from '@/lib/ssr/constants';
-
-export const ALL_METHODS: HTTPMethods[] = ['DELETE', 'GET', 'HEAD', 'PATCH', 'POST', 'PUT'];
+import { log } from '@/lib/logger';
 
 const MODE = process.env.NODE_ENV || 'development';
+const logger = log('server').c('plugin').c('vite');
 
 async function vitePlugin(fastify: FastifyInstance) {
   fastify.decorateReply('ssr', ssrRoute);
@@ -29,17 +29,19 @@ async function vitePlugin(fastify: FastifyInstance) {
   } else {
     const vite = await createServer();
 
-    console.log('Vite server created in development mode');
+    logger.info('Vite initialized', { mode: MODE });
 
     fastify.decorate('vite', vite);
     fastify.addHook('preHandler', async (req, reply) => {
       const url = req.raw.url || '';
 
       const reserved = [
-        ...reservedRoutes.filter((x) => x !== '/dashboard' && x !== '/auth'),
+        ...RESERVED_ROUTES.filter((x) => x !== '/dashboard' && x !== '/auth' && x !== '/r'),
         config.files.route,
         config.urls.route,
-      ].some((route) => url.startsWith(route));
+      ]
+        .filter((url) => url.trim() !== '/')
+        .some((route) => url.startsWith(route));
 
       if (reserved) return;
 
@@ -65,8 +67,6 @@ async function vitePlugin(fastify: FastifyInstance) {
         template = await readFile(resolve(`./src/client/ssr-${type}/`, 'index.html'), 'utf-8');
         template = await fastify.vite.transformIndexHtml(url, template);
 
-        // expose __dirname since dev modules are loaded in esm
-        global.__dirname = __dirname;
         render = (await fastify.vite.ssrLoadModule(`/ssr-${type}/server.tsx`)).render;
       } else {
         template = await readFile(resolve('./build', `client/ssr-${type}/index.html`), 'utf-8');

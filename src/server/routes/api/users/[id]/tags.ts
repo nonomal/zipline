@@ -1,48 +1,48 @@
-import { prisma } from '@/lib/db';
-import { Tag, tagSelect } from '@/lib/db/models/tag';
+import { ApiError } from '@/lib/api/errors';
+import { db } from '@/lib/db';
+import { tagColumns, Tag } from '@/lib/db/models/tag';
+import { getUserIdentity } from '@/lib/db/models/user';
 import { canInteract } from '@/lib/role';
 import { administratorMiddleware } from '@/server/middleware/administrator';
 import { userMiddleware } from '@/server/middleware/user';
-import fastifyPlugin from 'fastify-plugin';
+import typedPlugin from '@/server/typedPlugin';
+import z from 'zod';
 
 export type ApiUsersIdTagsResponse = Tag[];
 
-type Params = {
-  id: string;
-};
-
-// const logger = log('api').c('user').c('id').c('tags');
-
 export const PATH = '/api/users/:id/tags';
-export default fastifyPlugin(
-  (server, _, done) => {
-    server.get<{ Params: Params }>(
+export default typedPlugin(
+  async (server) => {
+    server.get(
       PATH,
-      { preHandler: [userMiddleware, administratorMiddleware] },
+      {
+        schema: {
+          description:
+            'List tags owned by the specified user, enforcing role-based interaction rules (admin only).',
+          params: z.object({
+            id: z.string(),
+          }),
+          tags: ['auth', 'admin'],
+        },
+        preHandler: [userMiddleware, administratorMiddleware],
+      },
       async (req, res) => {
         const { id } = req.params;
 
-        const user = await prisma.user.findUnique({
-          where: {
-            id,
-          },
-        });
+        const user = await getUserIdentity(id);
 
-        if (!user) return res.notFound();
-        if (!canInteract(req.user.role, user.role)) return res.notFound();
+        if (!user) throw new ApiError(9002);
+        if (!canInteract(req.user.role, user.role)) throw new ApiError(9002);
 
-        const tags = await prisma.tag.findMany({
-          where: {
-            userId: user.id,
-          },
-          select: tagSelect,
+        const tags = await db.query.tags.findMany({
+          columns: tagColumns,
+          where: { userId: user.id },
+          with: { files: { columns: { id: true } } },
         });
 
         return res.send(tags);
       },
     );
-
-    done();
   },
   { name: PATH },
 );

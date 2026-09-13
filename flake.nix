@@ -6,8 +6,8 @@
       flake = false;
     };
 
-    # node 24.4.1, postgres 17
-    nixpkgs.url = "github:nixos/nixpkgs/b527e89270879aaaf584c41f26b2796be634bc9d";
+    # node 24, postgres 17
+    nixpkgs.url = "github:nixos/nixpkgs/812b3986fd1568f7a858f97fcf425ad996ba7d25";
     flake-parts.url = "github:hercules-ci/flake-parts";
 
     devenv.url = "github:cachix/devenv";
@@ -58,7 +58,6 @@
               ffmpeg
 
               # for testing docker
-              colima
               docker
               docker-compose
             ];
@@ -75,16 +74,11 @@
               downall.exec = ''
                 process-compose down
               '';
-
-              # ensure that volumes are mounted with write access for docker containers
-              start_colima.exec = ''
-                colima start --mount $PWD/themes:w --mount $PWD/uploads:w --mount $PWD/public:w
-              '';
             };
 
             enterShell = ''
               export name="zipline-env";
-              echo -e "\n[$name]: run 'pgup' to start services, 'pgdown' to stop services";
+              echo -e "\n[$name]: run 'pgup' to start services, 'downall' to stop services";
             '';
 
             languages.javascript = {

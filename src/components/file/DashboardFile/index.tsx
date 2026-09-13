@@ -2,19 +2,35 @@ import type { File } from '@/lib/db/models/file';
 import { Card } from '@mantine/core';
 import { useState } from 'react';
 import DashboardFileType from '../DashboardFileType';
-import FileModal from './FileModal';
+import FileContextMenu from '../FileContextMenu';
+import DashboardFileModal from './DashboardFileModal';
 
 import styles from './index.module.css';
 
-export default function DashboardFile({ file, reduce, id }: { file: File; reduce?: boolean; id?: string }) {
+export default function DashboardFile({
+  file,
+  reduce,
+  id,
+  onOpen,
+}: {
+  file: File;
+  reduce?: boolean;
+  id?: string;
+  onOpen?: (fileId: string) => void;
+}) {
   const [open, setOpen] = useState(false);
+
+  const handleView = () => (onOpen ? onOpen(file.id) : setOpen(true));
 
   return (
     <>
-      <FileModal open={open} setOpen={setOpen} file={file} reduce={reduce} user={id} />
-      <Card shadow='md' radius='md' p={0} onClick={() => setOpen(true)} className={styles.file}>
-        <DashboardFileType key={file.id} file={file} />
-      </Card>
+      {!onOpen && <DashboardFileModal open={open} setOpen={setOpen} file={file} reduce={reduce} user={id} />}
+
+      <FileContextMenu file={file} reduce={reduce} user={id} onView={handleView}>
+        <Card shadow='md' radius='md' p={0} onClick={handleView} className={styles.file}>
+          <DashboardFileType key={file.id} file={file} />
+        </Card>
+      </FileContextMenu>
     </>
   );
 }

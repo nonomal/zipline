@@ -1,14 +1,15 @@
 import { Command } from 'commander';
-import { version } from '../../package.json';
+import packageJson from '../../package.json' with { type: 'json' };
 import { listUsers } from './commands/list-users';
 import { readConfig } from './commands/read-config';
 import { setUser } from './commands/set-user';
 import { importDir } from './commands/import-dir';
 import { exportConfig } from './commands/export-config';
+import { migratePglite } from './commands/migrate-pglite';
 
 const cli = new Command();
 
-cli.name('ziplinectl').version(version).description('controll utility for zipline');
+cli.name('ziplinectl').version(packageJson.version).description('control utility for zipline');
 
 cli
   .command('read-config')
@@ -52,5 +53,12 @@ cli
   .option('-y, --yml', 'export the configuration in a yml format', false)
   .option('-d, --show-defaults', 'ignore default values and only export changed values', false)
   .action(exportConfig);
+
+cli
+  .command('migrate-pglite')
+  .argument('<directory>', 'a new directory for the embedded database')
+  .option('--source <url>', 'PostgreSQL source URL (defaults to DATABASE_URL or DATABASE_* variables)')
+  .summary('copy an upgraded PostgreSQL database to a new PGlite directory; stop Zipline before cutover')
+  .action(migratePglite);
 
 cli.parse();

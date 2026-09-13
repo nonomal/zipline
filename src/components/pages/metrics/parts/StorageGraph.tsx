@@ -1,25 +1,28 @@
 import { bytes } from '@/lib/bytes';
-import { Metric } from '@/lib/db/models/metric';
-import { LineChart, ChartTooltip } from '@mantine/charts';
+import { MetricsPoint } from '@/lib/metrics';
+import { ChartTooltip, LineChart } from '@mantine/charts';
 import { Paper, Title } from '@mantine/core';
-import { defaultChartProps } from '../statsHelpers';
+import { useMemo } from 'react';
+import { defaultChartProps, formatChartDate, sortByCreatedAt } from '../statsHelpers';
 
-export default function StorageGraph({ metrics }: { metrics: Metric[] }) {
-  const sortedMetrics = metrics.sort(
-    (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
+export default function StorageGraph({ points }: { points: MetricsPoint[] }) {
+  const data = useMemo(
+    () =>
+      sortByCreatedAt(points).map((point) => ({
+        date: new Date(point.createdAt).getTime(),
+        storage: point.storage,
+      })),
+    [points],
   );
 
   return (
-    <Paper radius='sm' withBorder p='sm' mt='md'>
+    <Paper radius='md' withBorder p='sm' mt='md'>
       <Title order={3} mb='sm'>
         Storage Used
       </Title>
 
       <LineChart
-        data={sortedMetrics.map((metric) => ({
-          date: new Date(metric.createdAt).getTime(),
-          storage: metric.data.storage,
-        }))}
+        data={data}
         series={[
           {
             name: 'storage',
@@ -28,12 +31,12 @@ export default function StorageGraph({ metrics }: { metrics: Metric[] }) {
         ]}
         valueFormatter={(v) => bytes(Number(v))}
         xAxisProps={{
-          tickFormatter: (v) => new Date(v).toLocaleString(),
+          tickFormatter: formatChartDate,
         }}
         tooltipProps={{
           content: ({ label, payload }) => (
             <ChartTooltip
-              label={new Date(label).toLocaleString()}
+              label={formatChartDate(label)}
               payload={payload}
               valueFormatter={(v) => bytes(Number(v))}
               series={[{ name: 'storage', label: 'Storage Used' }]}

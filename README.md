@@ -47,7 +47,7 @@ Visit [the docs](https://zipline.diced.sh/docs/get-started/docker) for a more in
 
 This is the recommended way to run Zipline:
 
-```yml
+```yaml
 services:
   postgresql:
     image: postgres:16
@@ -56,7 +56,7 @@ services:
       - .env
     environment:
       POSTGRES_USER: ${POSTGRESQL_USER:-zipline}
-      POSTGRES_PASSWORD: ${POSTGRESQL_PASSWORD:?POSTGRESSQL_PASSWORD is required}
+      POSTGRES_PASSWORD: ${POSTGRESQL_PASSWORD:?POSTGRESQL_PASSWORD is required}
       POSTGRES_DB: ${POSTGRESQL_DB:-zipline}
     volumes:
       - pgdata:/var/lib/postgresql/data
@@ -91,11 +91,16 @@ volumes:
   pgdata:
 ```
 
+> [!WARNING]
+> Zipline requires a cpu with AVX support. We don't provide binaries or images that have support for non-AVX cpus
+
 ### Volumes
 
 - `./uploads` - The folder where all the user uploads are stored (the default is `./uploads`)
 - `./public` - The folder where all the public assets are stored (must mount to `/zipline/public`)
 - `./themes` - The folder where all the custom themes are stored (must mount to `/zipline/themes`)
+
+Temporary files default to `./uploads/.tmp`. Setting `CORE_TEMP_DIRECTORY` to another filesystem, such as tmpfs, can reduce local upload performance.
 
 ### Generating Secrets
 
@@ -225,8 +230,8 @@ After familiarizing yourself with the environment, you can continue below (skipp
 
 #### Prerequisites
 
-- nodejs (lts -> 20.x, 22.x)
-- pnpm (10.x)
+- Node.js (22 or newer; Node.js 24 recommended)
+- pnpm (11.x)
 - a postgresql server
 
 #### Setup
@@ -260,10 +265,6 @@ DATASOURCE_LOCAL_DIRECTORY="/path/to/your/local/files"
 # DATASOURCE_S3_BUCKET="your-bucket"
 # DATASOURCE_S3_ENDPOINT="your-endpoint"
 # ^ if using a custom endpoint other than aws s3
-
-# optional but both are required if using ssl
-# SSL_KEY="/path/to/your/ssl/key"
-# SSL_CERT="/path/to/your/ssl/cert"
 ```
 
 Install dependencies:
@@ -292,15 +293,15 @@ pnpm start
 
 #### Making changes to the database schema
 
-Zipline uses [prisma](https://www.prisma.io/) as its ORM, and as such, you will need to use the prisma CLI to facilitate any changes to the database schema.
+Zipline uses [Drizzle ORM](https://orm.drizzle.team/) for its database schema and queries.
 
-Once you have made a change to `prisma.schema`, you can run the script `db:migrate` to generate a migration file. This script doesn't apply the migration, as Zipline handles applying migrations itself on startup.
+After changing `src/lib/db/schema.ts`, generate a migration with Drizzle Kit. Zipline applies committed migrations automatically on startup.
 
 ```bash
 pnpm db:migrate
 ```
 
-If you wish to push changes to the database without generating a migration file, you can run the script `db:prototype`. This is only recommended for testing purposes, and should not be used in production.
+This command only creates a migration file; Zipline applies committed migrations when it starts. If you wish to push schema changes directly without generating a migration file, use `db:prototype`; this is only recommended for local prototyping and should not be used in production.
 
 ```bash
 pnpm db:prototype
@@ -319,7 +320,7 @@ pnpm validate
 To build the ctl, you can run the following command:
 
 ```bash
-pnpm build:server
+pnpm build
 ```
 
 then run any command you want

@@ -1,18 +1,13 @@
-import type { Invite as PrismaInvite } from '@/prisma/client';
-import type { User } from './user';
+import { invites, users } from '@/lib/db/schema';
+import { createSelectSchema } from 'drizzle-orm/zod';
+import { z } from 'zod';
 
-export type Invite = PrismaInvite & {
-  inviter?: {
-    username: string;
-    id: string;
-    role: User['role'];
-  };
-};
+const inviterSchema = createSelectSchema(users).pick({
+  username: true,
+  id: true,
+  role: true,
+});
 
-export const inviteInviterSelect = {
-  select: {
-    username: true,
-    id: true,
-    role: true,
-  },
-};
+export const inviteSchema = createSelectSchema(invites).extend({ inviter: inviterSchema.optional() });
+
+export type Invite = z.infer<typeof inviteSchema>;

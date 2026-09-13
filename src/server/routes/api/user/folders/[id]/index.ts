@@ -1,238 +1,244 @@
-import { prisma } from '@/lib/db';
-import { fileSelect } from '@/lib/db/models/file';
-import { Folder, cleanFolder } from '@/lib/db/models/folder';
-import { User } from '@/lib/db/models/user';
+import { ApiError } from '@/lib/api/errors';
+import { datasource } from '@/lib/datasource';
+import { getFilesWithUser } from '@/lib/db/models/file';
+import {
+  getParentChain,
+  removeFolder,
+  getFolderWithOwner,
+  getParentStatus,
+  Folder,
+  formatFolder,
+  folderSchema,
+  getFolder,
+  addFile,
+  removeFile,
+  updateFolder,
+} from '@/lib/db/models/folder';
 import { log } from '@/lib/logger';
-import { canInteract } from '@/lib/role';
+import { canManage } from '@/lib/role';
+import { zQsBoolean, zStringTrimmed } from '@/lib/validation';
 import { userMiddleware } from '@/server/middleware/user';
-import fastifyPlugin from 'fastify-plugin';
+import typedPlugin from '@/server/typedPlugin';
+import { FastifyRequest } from 'fastify';
+import z from 'zod';
 
 export type ApiUserFoldersIdResponse = Folder;
 
-type Params = {
-  id: string;
-};
-
-type Body = {
-  id?: string;
-  isPublic?: boolean;
-  name?: string;
-  allowUploads?: boolean;
-
-  delete?: 'file' | 'folder';
-};
-
-// TODO: need to refactor interaction checks to use this function in the future
-function checkInteraction(current?: Partial<User> | null, owner?: Partial<User> | null) {
-  if (!current || !owner) return false;
-  if (current.id === owner.id) return true;
-
-  const can = canInteract(current.role, owner.role);
-
-  return can;
-}
-
 const logger = log('api').c('user').c('folders').c('[id]');
 
+const paramsSchema = z.object({
+  id: z.string(),
+});
+
+const folderExistsAndEditable = async (req: FastifyRequest) => {
+  const { id } = req.params as z.infer<typeof paramsSchema>;
+
+  const folder = await getFolderWithOwner(id);
+
+  if (!folder) throw new ApiError(4001);
+  if (!canManage(req.user, folder.user)) throw new ApiError(4001);
+};
+
 export const PATH = '/api/user/folders/:id';
-export default fastifyPlugin(
-  (server, _, done) => {
-    server.route<{
-      Body: Body;
-      Params: Params;
-    }>({
-      url: PATH,
-      method: ['GET', 'PUT', 'PATCH', 'DELETE'],
-      preHandler: [userMiddleware],
-      handler: async (req, res) => {
+export default typedPlugin(
+  async (server) => {
+    server.get(
+      PATH,
+      {
+        schema: {
+          description:
+            'Fetch a specific folder by ID, optionally including files, children, and its parent chain.',
+          params: paramsSchema,
+          querystring: z.object({
+            noincl: zQsBoolean.optional(),
+          }),
+          response: {
+            200: folderSchema.partial(),
+          },
+          tags: ['auth'],
+        },
+        preHandler: [userMiddleware, folderExistsAndEditable],
+      },
+      async (req, res) => {
         const { id } = req.params;
+        const { noincl } = req.query;
 
-        const folder = await prisma.folder.findUnique({
-          where: {
-            id,
-          },
-          include: {
-            files: {
-              select: {
-                ...fileSelect,
-                password: true,
-              },
-            },
-            User: true,
-          },
-        });
-        if (!folder) return res.notFound('Folder not found');
-        if (!checkInteraction(req.user, folder.User)) return res.notFound('Folder not found');
+        const folder = await getFolder(id, !noincl);
+        if (!folder) throw new ApiError(4001);
 
-        if (req.method === 'PUT') {
-          const { id } = req.body;
-          if (!id) return res.badRequest('File id is required');
-
-          const file = await prisma.file.findUnique({
-            where: {
-              id,
-            },
-            include: {
-              User: true,
-            },
-          });
-          if (!file) return res.notFound('File not found');
-          if (!checkInteraction(req.user, file.User)) return res.notFound('File not found');
-
-          const fileInFolder = await prisma.file.findFirst({
-            where: {
-              id,
-              Folder: {
-                id: folder.id,
-              },
-            },
-          });
-          if (fileInFolder) return res.badRequest('File already in folder');
-
-          const nFolder = await prisma.folder.update({
-            where: {
-              id: folder.id,
-            },
-            data: {
-              files: {
-                connect: {
-                  id,
-                },
-              },
-            },
-            include: {
-              files: {
-                select: {
-                  ...fileSelect,
-                  password: true,
-                },
-              },
-              User: true,
-            },
-          });
-
-          logger.info('file added to folder', {
-            folder: folder.id,
-            file: id,
-          });
-
-          return res.send(cleanFolder(nFolder));
-        } else if (req.method === 'PATCH') {
-          const { isPublic, name, allowUploads } = req.body;
-
-          const nFolder = await prisma.folder.update({
-            where: {
-              id: folder.id,
-            },
-            data: {
-              ...(isPublic !== undefined && { public: isPublic }),
-              ...(name && { name }),
-              ...(allowUploads !== undefined && { allowUploads }),
-            },
-            include: {
-              files: {
-                select: {
-                  ...fileSelect,
-                  password: true,
-                },
-              },
-            },
-          });
-
-          logger.info('folder updated', {
-            folder: folder.id,
-            isPublic,
-            name,
-            allowUploads,
-          });
-
-          return res.send(cleanFolder(nFolder));
-        } else if (req.method === 'DELETE') {
-          const { delete: del } = req.body;
-
-          if (del === 'folder') {
-            const nFolder = await prisma.folder.delete({
-              where: {
-                id: folder.id,
-              },
-              include: {
-                files: {
-                  select: {
-                    ...fileSelect,
-                    password: true,
-                  },
-                },
-                User: true,
-              },
-            });
-
-            logger.info('folder deleted', {
-              folder: folder.id,
-            });
-
-            return res.send(cleanFolder(nFolder));
-          } else if (del === 'file') {
-            const { id } = req.body;
-            if (!id) return res.badRequest('File id is required');
-
-            const file = await prisma.file.findUnique({
-              where: {
-                id,
-              },
-              include: {
-                User: true,
-              },
-            });
-            if (!file) return res.notFound('File not found');
-            if (!checkInteraction(req.user, file.User)) return res.notFound('File not found');
-
-            const fileInFolder = await prisma.file.findFirst({
-              where: {
-                id,
-                Folder: {
-                  id: folder.id,
-                },
-              },
-            });
-            if (!fileInFolder) return res.badRequest('File not in folder');
-
-            const nFolder = await prisma.folder.update({
-              where: {
-                id: folder.id,
-              },
-              data: {
-                files: {
-                  disconnect: {
-                    id,
-                  },
-                },
-              },
-              include: {
-                files: {
-                  select: {
-                    ...fileSelect,
-                    password: true,
-                  },
-                },
-              },
-            });
-
-            logger.info('file removed from folder', {
-              folder: folder.id,
-              file: id,
-            });
-
-            return res.send(cleanFolder(nFolder));
-          }
-
-          return res.badRequest('Invalid delete type');
+        if (folder.parentId) {
+          folder.parent = await getParentChain(folder.parentId);
         }
 
-        return res.send(cleanFolder(folder));
+        return res.send(formatFolder(folder));
       },
-    });
+    );
 
-    done();
+    server.put(
+      PATH,
+      {
+        schema: {
+          description: 'Add a file to a specific folder owned by the user.',
+          body: z.object({
+            id: z.string(),
+          }),
+          params: paramsSchema,
+          response: {
+            200: folderSchema.partial(),
+          },
+          tags: ['auth'],
+        },
+        preHandler: [userMiddleware, folderExistsAndEditable],
+      },
+      async (req, res) => {
+        const { id: folderId } = req.params;
+        const { id } = req.body;
+
+        const [file] = await getFilesWithUser([id]);
+        if (!file) throw new ApiError(4000);
+        if (!canManage(req.user, file.user)) throw new ApiError(4000);
+
+        if (file.folderId === folderId) throw new ApiError(1011);
+
+        const nFolder = await addFile(file.id, folderId);
+        if (!nFolder) throw new ApiError(4002);
+
+        logger.info('file added to folder', { folder: folderId, file: id });
+        return res.send(formatFolder(nFolder));
+      },
+    );
+
+    server.patch(
+      PATH,
+      {
+        schema: {
+          description: "Update a folder's visibility, name, upload permissions, or parent.",
+          body: z.object({
+            isPublic: z.boolean().optional(),
+            name: zStringTrimmed.optional(),
+            allowUploads: z.boolean().optional(),
+            parentId: z.string().nullish(),
+          }),
+          params: paramsSchema,
+          response: {
+            200: folderSchema.partial(),
+          },
+          tags: ['auth'],
+        },
+        preHandler: [userMiddleware, folderExistsAndEditable],
+      },
+      async (req, res) => {
+        const { id: folderId } = req.params;
+        const { isPublic, name, allowUploads, parentId } = req.body;
+
+        if (parentId !== undefined) {
+          if (parentId === folderId) throw new ApiError(1015);
+
+          if (parentId !== null) {
+            const status = await getParentStatus(folderId, parentId, req.user.id);
+            if (status === 'missing') throw new ApiError(4007);
+            if (status === 'foreign') throw new ApiError(3003);
+            if (status === 'cycle') throw new ApiError(1016);
+          }
+        }
+
+        const nFolder = await updateFolder(folderId, {
+          ...(isPublic !== undefined && { public: isPublic }),
+          ...(name && { name }),
+          ...(allowUploads !== undefined && { allowUploads }),
+          ...(parentId !== undefined && { parentId }),
+        });
+        if (!nFolder) throw new ApiError(4001);
+
+        logger.info('folder updated', {
+          folder: nFolder.id,
+          isPublic,
+          name,
+          allowUploads,
+          parentId,
+        });
+
+        return res.send(formatFolder(nFolder));
+      },
+    );
+
+    server.delete(
+      PATH,
+      {
+        schema: {
+          body: z.object({
+            delete: z.enum(['file', 'folder']),
+            id: zStringTrimmed.optional(),
+
+            childrenAction: z.enum(['root', 'folder', 'cascade', 'cascade-files']).optional(),
+            targetFolderId: z.string().optional(),
+          }),
+          params: paramsSchema,
+          response: {
+            200: z.object({
+              success: z.boolean().nullish().describe('if deleting the folder, return success status'),
+              folder: folderSchema
+                .partial()
+                .nullish()
+                .describe('if deleting a file from the folder, returns the updated folder'),
+            }),
+          },
+          tags: ['auth'],
+        },
+        preHandler: [userMiddleware, folderExistsAndEditable],
+      },
+      async (req, res) => {
+        const { id: folderId } = req.params;
+        const { delete: del, childrenAction, targetFolderId } = req.body;
+
+        if (del === 'folder') {
+          if (childrenAction === 'folder' && targetFolderId) {
+            const targetFolder = await getFolderWithOwner(targetFolderId);
+            if (!targetFolder) throw new ApiError(4008);
+            if (!canManage(req.user, targetFolder.user)) throw new ApiError(4008, undefined, 403);
+            const status = await getParentStatus(folderId, targetFolderId, targetFolder.userId);
+            if (status === 'cycle') throw new ApiError(1016);
+          }
+
+          try {
+            const result = await removeFolder(folderId, childrenAction, targetFolderId);
+
+            if (!result?.success) throw new ApiError(1019);
+
+            if (result?.isCascade) {
+              for (const name of result.fileNames) {
+                await datasource.delete(name);
+              }
+
+              logger.info('folder cascade deleted', { folder: folderId, files: result.fileNames.length });
+              return res.send({ success: true });
+            }
+
+            logger.info('folder deleted', { folder: folderId, childrenAction, targetFolderId });
+            return res.send({ success: true });
+          } catch (error) {
+            if (error instanceof ApiError) throw error;
+            throw new ApiError(4003);
+          }
+        } else if (del === 'file') {
+          const { id } = req.body;
+          if (!id) throw new ApiError(1013);
+
+          const [file] = await getFilesWithUser([id]);
+
+          if (!file) throw new ApiError(4000);
+          if (!canManage(req.user, file.user)) throw new ApiError(4000);
+
+          if (file.folderId !== folderId) throw new ApiError(1012);
+
+          const nFolder = await removeFile(file.id, folderId);
+          if (!nFolder) throw new ApiError(4002);
+
+          logger.info('file removed from folder', { folder: nFolder.id, file: id });
+          return res.send({ folder: formatFolder(nFolder) });
+        }
+      },
+    );
   },
   { name: PATH },
 );

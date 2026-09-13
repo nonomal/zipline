@@ -1,25 +1,15 @@
-import { IncompleteFileStatus } from '@/prisma/client';
+import { incompleteFiles, type IncompleteFileMetadata } from '@/lib/db/schema';
+import { createSelectSchema } from 'drizzle-orm/zod';
 import { z } from 'zod';
 
-export type IncompleteFile = {
-  id: string;
-  createdAt: Date;
-  updatedAt: Date;
-
-  status: IncompleteFileStatus;
-  chunksTotal: number;
-  chunksComplete: number;
-
-  userId: string;
-
-  metadata: IncompleteFileMetadata;
-};
-
-export type IncompleteFileMetadata = z.infer<typeof metadataSchema>;
-export const metadataSchema = z.object({
+const metadataSchema = z.object({
   file: z.object({
     filename: z.string(),
     type: z.string(),
     id: z.string(),
   }),
-});
+}) satisfies z.ZodType<IncompleteFileMetadata>;
+
+export const incompleteFileSchema = createSelectSchema(incompleteFiles, { metadata: metadataSchema });
+
+export type IncompleteFile = z.infer<typeof incompleteFileSchema>;

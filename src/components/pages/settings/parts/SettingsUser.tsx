@@ -1,6 +1,8 @@
+import type { User } from '@/lib/db/models/user';
+import { ApiError } from '@/lib/api/errors';
 import { Response } from '@/lib/api/response';
 import { fetchApi } from '@/lib/fetchApi';
-import { useUserStore } from '@/lib/store/user';
+import { useUserStore } from '@/lib/client/store/user';
 import {
   ActionIcon,
   Button,
@@ -24,33 +26,43 @@ import {
   IconUser,
   IconUserCancel,
 } from '@tabler/icons-react';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { mutate } from 'swr';
+import useSWR from 'swr';
 import { useShallow } from 'zustand/shallow';
 
 export default function SettingsUser() {
   const [user, setUser] = useUserStore(useShallow((state) => [state.user, state.setUser]));
 
+  const { data: tokenPayload } = useSWR<Response['/api/user/token']>('/api/user/token');
+
+  if (!user) {
+    return (
+      <Paper withBorder p='sm'>
+        <Title order={2}>User</Title>
+        <Text c='dimmed' size='sm' mt='sm'>
+          Loading…
+        </Text>
+      </Paper>
+    );
+  }
+
+  return <Form user={user} setUser={setUser} token={tokenPayload?.token ?? ''} />;
+}
+
+function Form({ user, setUser, token }: { user: User; setUser: (u: User) => void; token: string }) {
   const [tokenShown, setTokenShown] = useState(false);
-  const [token, setToken] = useState('');
-
-  useEffect(() => {
-    (async () => {
-      const { data } = await fetchApi<Response['/api/user/token']>('/api/user/token');
-
-      if (data) {
-        setToken(data.token || '');
-      }
-    })();
-  }, []);
 
   const form = useForm({
     initialValues: {
-      username: user?.username ?? '',
+      username: user.username,
       password: '',
+      currentPassword: '',
     },
     validate: {
       username: (value) => (value.length < 1 ? 'Username is required' : null),
+      currentPassword: (value, values) =>
+        values.password && !value ? 'Enter your current password to change it' : null,
     },
   });
 
@@ -58,16 +70,22 @@ export default function SettingsUser() {
     const send: {
       username?: string;
       password?: string;
+      currentPassword?: string;
     } = {};
 
-    if (values.username !== user?.username) send['username'] = values.username.trim();
-    if (values.password) send['password'] = values.password.trim();
+    if (values.username !== user.username) send['username'] = values.username.trim();
+    if (values.password) {
+      send['password'] = values.password.trim();
+      send['currentPassword'] = values.currentPassword;
+    }
 
     const { data, error } = await fetchApi<Response['/api/user']>('/api/user', 'PATCH', send);
 
     if (!data && error) {
-      if (error.error === 'Username already exists') {
+      if (ApiError.check(error, 1039)) {
         form.setFieldError('username', error.error);
+      } else if (ApiError.check(error, 1066) || ApiError.check(error, 1067)) {
+        form.setFieldError('currentPassword', error.error);
       } else {
         notifications.show({
           title: 'Error while updating user',
@@ -82,7 +100,11 @@ export default function SettingsUser() {
 
     if (!data?.user) return;
 
+    form.setFieldValue('password', '');
+    form.setFieldValue('currentPassword', '');
+
     mutate('/api/user');
+    mutate('/api/user/token');
     setUser(data.user);
     notifications.show({
       message: 'User updated',
@@ -95,7 +117,7 @@ export default function SettingsUser() {
     <Paper withBorder p='sm'>
       <Title order={2}>User</Title>
       <Text c='dimmed' size='sm' mb='sm'>
-        {user?.id}
+        {user.id}
       </Text>
 
       <form onSubmit={form.onSubmit(onSubmit)}>
@@ -132,8 +154,17 @@ export default function SettingsUser() {
           {...form.getInputProps('password')}
           leftSection={<IconAsteriskSimple size='1rem' />}
         />
+        {form.values.password && (
+          <PasswordInput
+            label='Current password'
+            description='Required to change your password.'
+            autoComplete='current-password'
+            {...form.getInputProps('currentPassword')}
+            leftSection={<IconAsteriskSimple size='1rem' />}
+          />
+        )}
 
-        <Button type='submit' mt='md' loading={!user} leftSection={<IconDeviceFloppy size='1rem' />}>
+        <Button type='submit' mt='md' leftSection={<IconDeviceFloppy size='1rem' />}>
           Save
         </Button>
       </form>

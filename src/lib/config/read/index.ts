@@ -33,6 +33,7 @@ export const rawConfig: any = {
     maxViewsInterval: undefined,
     thumbnailsInterval: undefined,
     metricsInterval: undefined,
+    cleanThumbnailsInterval: undefined,
   },
   files: {
     route: undefined,
@@ -47,6 +48,8 @@ export const rawConfig: any = {
     randomWordsNumAdjectives: undefined,
     randomWordsSeparator: undefined,
     defaultCompressionFormat: undefined,
+    maxFilesPerUpload: undefined,
+    extensionlessUrls: undefined,
   },
   urls: {
     route: undefined,
@@ -96,7 +99,11 @@ export const rawConfig: any = {
       enabled: undefined,
       issuer: undefined,
     },
-    passkeys: undefined,
+    passkeys: {
+      enabled: undefined,
+      rpID: undefined,
+      origin: undefined,
+    },
   },
   oauth: {
     bypassLocalLogin: undefined,
@@ -133,10 +140,6 @@ export const rawConfig: any = {
     onUpload: undefined,
     onShorten: undefined,
   },
-  ssl: {
-    key: undefined,
-    cert: undefined,
-  },
   pwa: {
     enabled: undefined,
     title: undefined,
@@ -167,9 +170,10 @@ export async function read() {
       }
 
       global.__tamperedConfig__.push(col);
-      logger.info('overriding database value from env', { col, value: val });
     }
   }
+
+  logger.debug('overridden db settings from env vars', { overridden: global.__tamperedConfig__ });
 
   const raw = structuredClone(rawConfig);
 

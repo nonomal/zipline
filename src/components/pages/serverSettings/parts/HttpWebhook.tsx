@@ -1,25 +1,32 @@
-import { Response } from '@/lib/api/response';
-import { Button, LoadingOverlay, Paper, SimpleGrid, TextInput, Title } from '@mantine/core';
+import type { Response } from '@/lib/api/response';
+import { Button, LoadingOverlay, Stack, TextInput } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { IconDeviceFloppy } from '@tabler/icons-react';
-import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { settingsOnSubmit } from '../settingsOnSubmit';
+import useServerSettings from '../useServerSettings';
 
-export default function HttpWebhook({
-  swr: { data, isLoading },
-}: {
-  swr: { data: Response['/api/server/settings'] | undefined; isLoading: boolean };
-}) {
+export default function HttpWebhook() {
+  const { data, isLoading } = useServerSettings();
+
+  return (
+    <>
+      <LoadingOverlay visible={isLoading} />
+      {data ? <Form data={data} isLoading={isLoading} /> : null}
+    </>
+  );
+}
+
+function Form({ data, isLoading }: { data: Response['/api/server/settings']; isLoading: boolean }) {
   const navigate = useNavigate();
 
   const form = useForm({
     initialValues: {
-      httpWebhookOnUpload: '',
-      httpWebhookOnShorten: '',
+      httpWebhookOnUpload: data.settings.httpWebhookOnUpload,
+      httpWebhookOnShorten: data.settings.httpWebhookOnShorten,
     },
     enhanceGetInputProps: (payload) => ({
-      disabled: data?.tampered?.includes(payload.field) || false,
+      disabled: data.tampered.includes(payload.field) || false,
     }),
   });
 
@@ -37,42 +44,27 @@ export default function HttpWebhook({
     return settingsOnSubmit(navigate, form)(values);
   };
 
-  useEffect(() => {
-    if (!data) return;
-
-    form.setValues({
-      httpWebhookOnUpload: data.settings.httpWebhookOnUpload ?? '',
-      httpWebhookOnShorten: data.settings.httpWebhookOnShorten ?? '',
-    });
-  }, [data]);
-
   return (
-    <Paper withBorder p='sm' pos='relative'>
-      <LoadingOverlay visible={isLoading} />
+    <form onSubmit={form.onSubmit(onSubmit)}>
+      <Stack gap='lg'>
+        <TextInput
+          label='On Upload'
+          description='The URL to send a POST request to when a file is uploaded.'
+          placeholder='https://example.com/upload'
+          {...form.getInputProps('httpWebhookOnUpload')}
+        />
 
-      <Title order={2}>HTTP Webhooks</Title>
+        <TextInput
+          label='On Shorten'
+          description='The URL to send a POST request to when a URL is shortened.'
+          placeholder='https://example.com/shorten'
+          {...form.getInputProps('httpWebhookOnShorten')}
+        />
+      </Stack>
 
-      <form onSubmit={form.onSubmit(onSubmit)}>
-        <SimpleGrid mt='md' cols={{ base: 1, md: 2 }} spacing='lg'>
-          <TextInput
-            label='On Upload'
-            description='The URL to send a POST request to when a file is uploaded.'
-            placeholder='https://example.com/upload'
-            {...form.getInputProps('httpWebhookOnUpload')}
-          />
-
-          <TextInput
-            label='On Shorten'
-            description='The URL to send a POST request to when a URL is shortened.'
-            placeholder='https://example.com/shorten'
-            {...form.getInputProps('httpWebhookOnShorten')}
-          />
-        </SimpleGrid>
-
-        <Button type='submit' mt='md' loading={isLoading} leftSection={<IconDeviceFloppy size='1rem' />}>
-          Save
-        </Button>
-      </form>
-    </Paper>
+      <Button type='submit' mt='md' loading={isLoading} leftSection={<IconDeviceFloppy size='1rem' />}>
+        Save
+      </Button>
+    </form>
   );
 }

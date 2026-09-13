@@ -36,9 +36,6 @@ export const ENVS = [
 
   env('datasource.local.directory', 'DATASOURCE_LOCAL_DIRECTORY', 'string'),
 
-  env('ssl.key', 'SSL_KEY', 'string'),
-  env('ssl.cert', 'SSL_CERT', 'string'),
-
   // database stuff
   env('core.trustProxy', 'CORE_TRUST_PROXY', 'boolean', true),
   env('core.returnHttpsUrls', 'CORE_RETURN_HTTPS_URLS', 'boolean', true),
@@ -54,10 +51,13 @@ export const ENVS = [
   env('tasks.maxViewsInterval', 'TASKS_MAX_VIEWS_INTERVAL', 'string', true),
   env('tasks.thumbnailsInterval', 'TASKS_THUMBNAILS_INTERVAL', 'string', true),
   env('tasks.metricsInterval', 'TASKS_METRICS_INTERVAL', 'string', true),
+  env('tasks.cleanThumbnailsInterval', 'TASKS_CLEAN_THUMBNAILS_INTERVAL', 'string', true),
 
   env('files.route', 'FILES_ROUTE', 'string', true),
   env('files.length', 'FILES_LENGTH', 'number', true),
   env('files.defaultFormat', 'FILES_DEFAULT_FORMAT', 'string', true),
+  env('files.disabledTypes', 'FILES_DISABLED_TYPES', 'string[]', true),
+  env('files.disabledTypesDefault', 'FILES_DISABLED_TYPES_DEFAULT', 'string', true),
   env('files.disabledExtensions', 'FILES_DISABLED_EXTENSIONS', 'string[]', true),
   env('files.maxFileSize', 'FILES_MAX_FILE_SIZE', 'string', true),
   env('files.defaultExpiration', 'FILES_DEFAULT_EXPIRATION', 'string', true),
@@ -67,6 +67,8 @@ export const ENVS = [
   env('files.randomWordsNumAdjectives', 'FILES_RANDOM_WORDS_NUM_ADJECTIVES', 'number', true),
   env('files.randomWordsSeparator', 'FILES_RANDOM_WORDS_SEPARATOR', 'string', true),
   env('files.defaultCompressionFormat', 'FILES_DEFAULT_COMPRESSION_FORMAT', 'string', true),
+  env('files.maxFilesPerUpload', 'FILES_MAX_FILES_PER_UPLOAD', 'number', true),
+  env('files.extensionlessUrls', 'FILES_EXTENSIONLESS_URLS', 'boolean', true),
 
   env('urls.route', 'URLS_ROUTE', 'string', true),
   env('urls.length', 'URLS_LENGTH', 'number', true),
@@ -81,13 +83,13 @@ export const ENVS = [
   env('features.thumbnails.enabled', 'FEATURES_THUMBNAILS_ENABLED', 'boolean', true),
   env('features.thumbnails.num_threads', 'FEATURES_THUMBNAILS_NUM_THREADS', 'number', true),
   env('features.thumbnails.format', 'FEATURES_THUMBNAILS_FORMAT', 'string', true),
+  env('features.thumbnails.instantaneous', 'FEATURES_THUMBNAILS_INSTANTANEOUS', 'boolean', true),
 
   env('features.metrics.enabled', 'FEATURES_METRICS_ENABLED', 'boolean', true),
   env('features.metrics.adminOnly', 'FEATURES_METRICS_ADMIN_ONLY', 'boolean', true),
   env('features.metrics.showUserSpecific', 'FEATURES_METRICS_SHOW_USER_SPECIFIC', 'boolean', true),
 
   env('features.versionChecking', 'FEATURES_VERSION_CHECKING', 'boolean', true),
-  env('features.versionAPI', 'FEATURES_VERSION_API', 'string', true),
 
   env('domains', 'DOMAINS', 'string[]', true),
 
@@ -131,7 +133,9 @@ export const ENVS = [
 
   env('mfa.totp.enabled', 'MFA_TOTP_ENABLED', 'boolean', true),
   env('mfa.totp.issuer', 'MFA_TOTP_ISSUER', 'string', true),
-  env('mfa.passkeys', 'MFA_PASSKEYS', 'boolean', true),
+  env('mfa.passkeys.enabled', 'MFA_PASSKEYS_ENABLED', 'boolean', true),
+  env('mfa.passkeys.rpID', 'MFA_PASSKEYS_RP_ID', 'string', true),
+  env('mfa.passkeys.origin', 'MFA_PASSKEYS_ORIGIN', 'string', true),
 
   env('ratelimit.enabled', 'RATELIMIT_ENABLED', 'boolean', true),
   env('ratelimit.max', 'RATELIMIT_MAX', 'number', true),

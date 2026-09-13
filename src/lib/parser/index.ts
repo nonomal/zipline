@@ -1,13 +1,13 @@
 import { bytes } from '../bytes';
 import { File } from '../db/models/file';
 import { Url } from '../db/models/url';
-import { User } from '../db/models/user';
+import { LimitedUser, User } from '../db/models/user';
 import { ParseValueMetrics } from './metrics';
 
 export type ParseValue = {
   file?: File;
   url?: Partial<Url>;
-  user?: User | Omit<User, 'oauthProviders' | 'passkeys'>;
+  user?: User | LimitedUser;
 
   link?: {
     returned?: string;
@@ -72,12 +72,12 @@ export function parseString(str: string, value: ParseValue) {
     }
 
     if (['originalName', 'name'].includes(matches.groups.prop)) {
-      const decoded = decodeURIComponent(getV[matches.groups.prop as keyof ParseValue['file']]);
+      const filename = getV[matches.groups.prop as keyof ParseValue['file']];
       str = replaceCharsFromString(
         str,
         modifier(
           matches.groups.mod || 'string',
-          decoded,
+          filename,
           matches.groups.mod_tzlocale ?? undefined,
           matches.groups.mod_check_true ?? undefined,
           matches.groups.mod_check_false ?? undefined,

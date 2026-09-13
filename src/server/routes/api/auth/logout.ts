@@ -1,8 +1,11 @@
-import { prisma } from '@/lib/db';
+import { db } from '@/lib/db';
+import { userSessions } from '@/lib/db/schema';
 import { log } from '@/lib/logger';
 import { userMiddleware } from '@/server/middleware/user';
 import { getSession } from '@/server/session';
-import fastifyPlugin from 'fastify-plugin';
+import typedPlugin from '@/server/typedPlugin';
+import { and, eq } from 'drizzle-orm';
+import z from 'zod';
 
 export type ApiLogoutResponse = {
   loggedOut?: boolean;
@@ -11,34 +14,40 @@ export type ApiLogoutResponse = {
 const logger = log('api').c('auth').c('logout');
 
 export const PATH = '/api/auth/logout';
-export default fastifyPlugin(
-  (server, _, done) => {
-    server.get(PATH, { preHandler: [userMiddleware] }, async (req, res) => {
-      const current = await getSession(req, res);
-
-      await prisma.user.update({
-        where: {
-          id: req.user.id,
-        },
-        data: {
-          sessions: {
-            set: req.user.sessions.filter((session) => session !== current.sessionId),
+export default typedPlugin(
+  async (server) => {
+    server.get(
+      PATH,
+      {
+        schema: {
+          description: 'Log out the currently authenticated user and invalidate their active session.',
+          response: {
+            200: z.object({
+              loggedOut: z.boolean().optional(),
+            }),
           },
+          tags: ['auth'],
         },
-      });
+        preHandler: [userMiddleware],
+      },
+      async (req, res) => {
+        const current = await getSession(req, res);
 
-      current.destroy();
+        await db
+          .delete(userSessions)
+          .where(and(eq(userSessions.userId, req.user.id), eq(userSessions.id, current.sessionId!)));
 
-      logger.info('user logged out', {
-        user: req.user.username,
-        ip: req.ip ?? 'unknown',
-        ua: req.headers['user-agent'],
-      });
+        current.destroy();
 
-      return res.send({ loggedOut: true });
-    });
+        logger.info('user logged out', {
+          user: req.user.username,
+          ip: req.ip ?? 'unknown',
+          ua: req.headers['user-agent'],
+        });
 
-    done();
+        return res.send({ loggedOut: true });
+      },
+    );
   },
   { name: PATH },
 );

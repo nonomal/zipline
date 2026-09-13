@@ -13,7 +13,7 @@ import {
   Text,
 } from '@mantine/core';
 import { IconDownload, IconEyeFilled, IconGlobe, IconPercentage, IconWriting } from '@tabler/icons-react';
-import React, { useReducer, useState } from 'react';
+import { useReducer, useState } from 'react';
 import useSWR from 'swr';
 import { flameshot } from './generators/flameshot';
 import { sharex } from './generators/sharex';
@@ -27,6 +27,7 @@ export type GeneratorOptions = {
   imageCompressionPercent: number | null;
   maxViews: number | null;
   addOriginalName: boolean | null;
+  extensionless: boolean | null;
   overrides_returnDomain: string | null;
   noJson: boolean | null;
 
@@ -68,6 +69,7 @@ export const defaultGeneratorOptions: GeneratorOptions = {
   imageCompressionPercent: null,
   maxViews: null,
   addOriginalName: null,
+  extensionless: null,
   overrides_returnDomain: null,
   noJson: null,
 
@@ -104,14 +106,12 @@ export default function GeneratorButton({
   );
 
   const { data: tokenData, isLoading, error } = useSWR<Response['/api/user/token']>('/api/user/token');
-  const { data: settingsData } = useSWR<Response['/api/server/settings']>('/api/server/settings');
+  const { data: settingsData } = useSWR<Response['/api/server/public']>('/api/server/public');
 
   const isUnixLike = name === 'Flameshot' || name === 'Shell Script';
   const onlyFile = generatorType === 'file';
 
-  const domains = Array.isArray(settingsData?.settings.domains)
-    ? settingsData?.settings.domains.map((d) => String(d))
-    : [];
+  const domains = Array.isArray(settingsData?.domains) ? settingsData?.domains.map((d) => String(d)) : [];
   const domainOptions = [
     { value: '', label: 'Default Domain' },
     ...domains.map((domain) => ({
@@ -228,6 +228,16 @@ export default function GeneratorButton({
             onChange={(event) => setOption({ addOriginalName: event.currentTarget.checked ?? false })}
             disabled={!onlyFile}
           />
+
+          {settingsData?.files?.extensionlessUrls && (
+            <Switch
+              label='Extensionless URL'
+              description='Remove the file extension from the returned URL. The file can still be accessed with its extension. This option will only work if the server is configured to allow extensionless URLs.'
+              checked={options.extensionless ?? false}
+              onChange={(event) => setOption({ extensionless: event.currentTarget.checked ?? false })}
+              disabled={!onlyFile}
+            />
+          )}
 
           {name === 'ShareX' && (
             <Switch

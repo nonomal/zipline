@@ -1,6 +1,7 @@
 import { Response } from '@/lib/api/response';
 import { fetchApi } from '@/lib/fetchApi';
-import { useTitle } from '@/lib/hooks/useTitle';
+import useUser from '@/lib/client/hooks/useUser';
+import { useTitle } from '@/lib/client/hooks/useTitle';
 import {
   Button,
   Center,
@@ -18,18 +19,18 @@ import {
 import { useForm } from '@mantine/form';
 import { notifications, showNotification } from '@mantine/notifications';
 import { IconLogin, IconPlus, IconUserPlus, IconX } from '@tabler/icons-react';
-import { useEffect, useState } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useEffect } from 'react';
+import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import useSWR, { mutate } from 'swr';
 import GenericError from '../../error/GenericError';
+import { getWebClient } from '@/lib/api/detect';
+import { ApiError } from '@/lib/api/errors';
 
 export function Component() {
   useTitle('Register');
 
   const location = useLocation();
   const navigate = useNavigate();
-
-  const [loading, setLoading] = useState(true);
 
   const {
     data: config,
@@ -57,6 +58,8 @@ export function Component() {
     },
   );
 
+  const { user, loading: userLoading } = useUser();
+
   const form = useForm({
     initialValues: {
       username: '',
@@ -64,21 +67,13 @@ export function Component() {
       tos: false,
     },
     validate: {
-      username: (value) => (value.length < 1 ? 'Username is required' : null),
-      password: (value) => (value.length < 1 ? 'Password is required' : null),
+      username: (value) => (value.length >= 1 ? null : 'Username is required'),
+      password: (value) => (value.length >= 1 ? null : 'Password is required'),
     },
+    enhanceGetInputProps: ({ field }) => ({
+      name: field,
+    }),
   });
-
-  useEffect(() => {
-    (async () => {
-      const res = await fetch('/api/user');
-      if (res.ok) {
-        navigate('/dashboard');
-      } else {
-        setLoading(false);
-      }
-    })();
-  }, []);
 
   useEffect(() => {
     if (!config) return;
@@ -96,14 +91,21 @@ export function Component() {
       return;
     }
 
-    const { data, error } = await fetchApi('/api/auth/register', 'POST', {
-      username,
-      password,
-      code,
-    });
+    const { data, error } = await fetchApi(
+      '/api/auth/register',
+      'POST',
+      {
+        username,
+        password,
+        code,
+      },
+      {
+        'x-zipline-client': JSON.stringify(getWebClient()),
+      },
+    );
 
     if (error) {
-      if (error.error === 'Username is taken') {
+      if (ApiError.check(error, 1039)) {
         form.setFieldError('username', 'Username is taken');
       } else {
         notifications.show({
@@ -126,7 +128,11 @@ export function Component() {
     }
   };
 
-  if (loading || configLoading) return <LoadingOverlay visible />;
+  if (userLoading || configLoading) return <LoadingOverlay visible />;
+
+  if (user) {
+    return <Navigate to='/dashboard' replace />;
+  }
 
   if (!config || configError) {
     return (
@@ -214,6 +220,7 @@ export function Component() {
             <TextInput
               size='md'
               placeholder='Enter your username...'
+              autoComplete='username'
               styles={{
                 input: {
                   backgroundColor: config.website.loginBackground ? 'transparent' : undefined,
@@ -225,6 +232,7 @@ export function Component() {
             <PasswordInput
               size='md'
               placeholder='Enter your password...'
+              autoComplete='new-password'
               styles={{
                 input: {
                   backgroundColor: config.website.loginBackground ? 'transparent' : undefined,

@@ -1,64 +1,89 @@
-import { Export4 } from '@/lib/import/version4/validateExport';
+import { ApiError } from '@/lib/api/errors';
+import { db } from '@/lib/db';
+import { files, folders, invites, metrics, thumbnails, urls, users, zipline } from '@/lib/db/schema';
+import { Export4, export4Schema } from '@/lib/import/version4/validateExport';
 import { log } from '@/lib/logger';
 import { administratorMiddleware } from '@/server/middleware/administrator';
 import { userMiddleware } from '@/server/middleware/user';
-import fastifyPlugin from 'fastify-plugin';
 
-import { prisma } from '@/lib/db';
+import { zQsBoolean } from '@/lib/validation';
+import typedPlugin from '@/server/typedPlugin';
 import { cpus, hostname, platform, release } from 'os';
-import { version } from '../../../../../package.json';
+import z from 'zod';
+import { version } from '@/lib/version';
 
-async function getCounts() {
-  const users = await prisma.user.count();
-  const files = await prisma.file.count();
-  const urls = await prisma.url.count();
-  const folders = await prisma.folder.count();
-  const invites = await prisma.invite.count();
-  const thumbnails = await prisma.thumbnail.count();
-  const metrics = await prisma.metric.count();
-
-  return {
-    users,
-    files,
-    urls,
-    folders,
-    invites,
-    thumbnails,
-    metrics,
-  };
-}
+const exportCountsSchema = z.object({
+  users: z.number(),
+  files: z.number(),
+  urls: z.number(),
+  folders: z.number(),
+  invites: z.number(),
+  thumbnails: z.number(),
+  metrics: z.number(),
+});
 
 export type ApiServerExport = Export4;
-
-type Query = {
-  nometrics?: string;
-  counts?: string;
-};
 
 const logger = log('api').c('server').c('export');
 
 export const PATH = '/api/server/export';
-export default fastifyPlugin(
-  (server, _, done) => {
-    server.get<{ Querystring: Query }>(
+export default typedPlugin(
+  async (server) => {
+    server.get(
       PATH,
       {
+        schema: {
+          description:
+            'Export Zipline server data as a version 4 export bundle or return aggregate counts of core resources.',
+          querystring: z.object({
+            nometrics: zQsBoolean.optional(),
+            counts: zQsBoolean.optional(),
+          }),
+          response: {
+            200: z.union([
+              exportCountsSchema.describe('if ?counts=true'),
+              export4Schema.describe('if ?counts is not true or not there'),
+            ]),
+          },
+        },
         preHandler: [userMiddleware, administratorMiddleware],
       },
       async (req, res) => {
-        if (req.query.counts === 'true') {
-          const counts = await getCounts();
+        if (req.user.role !== 'SUPERADMIN') throw new ApiError(3015);
 
-          return res.send(counts);
+        if (req.query.counts) {
+          const [userCount, fileCount, urlCount, folderCount, inviteCount, thumbnailCount, metricCount] =
+            await Promise.all([
+              db.$count(users),
+              db.$count(files),
+              db.$count(urls),
+              db.$count(folders),
+              db.$count(invites),
+              db.$count(thumbnails),
+              db.$count(metrics),
+            ]);
+
+          return res.send({
+            users: userCount,
+            files: fileCount,
+            urls: urlCount,
+            folders: folderCount,
+            invites: inviteCount,
+            thumbnails: thumbnailCount,
+            metrics: metricCount,
+          });
         }
 
         logger.debug('exporting server data', { format: '4', requester: req.user.username });
 
-        const settingsTable = await prisma.zipline.findFirst();
-        if (!settingsTable)
-          return res.badRequest(
-            'Invalid setup, no settings found. Run the setup process again before exporting data.',
-          );
+        const [settings] = await db.select().from(zipline).limit(1);
+        if (!settings) throw new ApiError(1023);
+
+        const env = Object.fromEntries(
+          Object.entries(process.env).filter(
+            (entry): entry is [string, string] => typeof entry[1] === 'string',
+          ),
+        );
 
         const export4: Export4 = {
           versions: {
@@ -68,7 +93,7 @@ export default fastifyPlugin(
           },
           request: {
             date: new Date().toISOString(),
-            env: process.env as Record<string, string>,
+            env,
             user: `${req.user.id}:${req.user.username}`,
             os: {
               arch: process.arch,
@@ -79,7 +104,7 @@ export default fastifyPlugin(
             },
           },
           data: {
-            settings: settingsTable,
+            settings,
 
             users: [],
             userPasskeys: [],
@@ -96,35 +121,19 @@ export default fastifyPlugin(
           },
         };
 
-        const users = await prisma.user.findMany({
-          include: {
+        const userRows = await db.query.users.findMany({
+          with: {
             passkeys: true,
             quota: true,
             oauthProviders: true,
             invites: true,
             urls: true,
-            tags: {
-              include: {
-                files: {
-                  select: {
-                    id: true,
-                  },
-                },
-              },
-            },
-            folders: {
-              include: {
-                files: {
-                  select: {
-                    id: true,
-                  },
-                },
-              },
-            },
+            tags: { with: { files: { columns: { id: true } } } },
+            folders: { with: { files: { columns: { id: true } } } },
           },
         });
 
-        for (const user of users) {
+        for (const user of userRows) {
           export4.data.users.push({
             createdAt: user.createdAt.toISOString(),
             id: user.id,
@@ -142,7 +151,7 @@ export default fastifyPlugin(
               id: passkey.id,
               lastUsed: passkey.lastUsed ? passkey.lastUsed.toISOString() : null,
               name: passkey.name,
-              reg: passkey.reg as Record<string, unknown>,
+              reg: passkey.reg,
               userId: passkey.userId,
             });
           }
@@ -192,6 +201,7 @@ export default fastifyPlugin(
               allowUploads: folder.allowUploads,
               userId: folder.userId,
               files: folder.files.map((file) => file.id),
+              parentId: folder.parentId,
             });
           }
 
@@ -223,9 +233,9 @@ export default fastifyPlugin(
           }
         }
 
-        const files = await prisma.file.findMany();
+        const fileRows = await db.select().from(files);
 
-        for (const file of files) {
+        for (const file of fileRows) {
           if (!file.userId)
             logger.warn('file has no user associated with it, still exporting...', {
               fileId: file.id,
@@ -249,9 +259,9 @@ export default fastifyPlugin(
           });
         }
 
-        const thumbnails = await prisma.thumbnail.findMany();
+        const thumbnailRows = await db.select().from(thumbnails);
 
-        for (const thumbnail of thumbnails) {
+        for (const thumbnail of thumbnailRows) {
           export4.data.thumbnails.push({
             createdAt: thumbnail.createdAt.toISOString(),
             id: thumbnail.id,
@@ -263,23 +273,21 @@ export default fastifyPlugin(
         }
 
         if (req.query.nometrics === undefined) {
-          const metrics = await prisma.metric.findMany();
+          const metricRows = await db.select().from(metrics);
 
-          export4.data.metrics = metrics.map((metric) => ({
+          export4.data.metrics = metricRows.map((metric) => ({
             createdAt: metric.createdAt.toISOString(),
             id: metric.id,
-            data: metric.data as Record<string, unknown>,
+            data: metric.data,
           }));
         }
 
         return res
-          .header('Content-Disposition', `attachment; filename="zipline4_export_${Date.now()}.json"`)
+          .header('Content-Disposition', `attachment; filename=zipline4_export_${Date.now()}.json`)
           .type('application/json')
-          .send(export4);
+          .send(export4 satisfies Export4);
       },
     );
-
-    done();
   },
   { name: PATH },
 );

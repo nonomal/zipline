@@ -1,13 +1,9 @@
-import type { Url as PrismaUrl } from '@/prisma/client';
+import { urls } from '@/lib/db/schema';
+import { createSelectSchema } from 'drizzle-orm/zod';
+import { z } from 'zod';
 
-export type Url = PrismaUrl & {
-  similarity?: number;
-};
+export const urlSchema = createSelectSchema(urls, { password: z.boolean() }).extend({
+  similarity: z.number().optional(),
+});
 
-export function cleanUrlPasswords(urls: Url[]) {
-  for (const url of urls) {
-    (url as any).password = !!url.password;
-  }
-
-  return urls;
-}
+export type Url = z.infer<typeof urlSchema>;

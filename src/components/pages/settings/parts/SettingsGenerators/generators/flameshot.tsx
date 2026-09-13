@@ -54,6 +54,12 @@ export function flameshot(token: string, type: 'file' | 'url', options: Generato
     delete toAddHeaders['x-zipline-original-name'];
   }
 
+  if (options.extensionless === true && type === 'file') {
+    toAddHeaders['x-zipline-extensionless'] = 'true';
+  } else {
+    delete toAddHeaders['x-zipline-extensionless'];
+  }
+
   if (options.overrides_returnDomain !== null) {
     toAddHeaders['x-zipline-domain'] = options.overrides_returnDomain;
   } else {
@@ -61,7 +67,7 @@ export function flameshot(token: string, type: 'file' | 'url', options: Generato
   }
 
   for (const [key, value] of Object.entries(toAddHeaders)) {
-    curl.push('-H', `${key}: ${value}`);
+    curl.push('-H', `'${key}: ${value}'`);
   }
 
   let script;

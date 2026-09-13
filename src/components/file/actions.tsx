@@ -1,13 +1,15 @@
+import { mutateFolder } from '@/components/pages/folders/actions';
 import { Response } from '@/lib/api/response';
+import { copyLink } from '@/lib/client/copyLink';
 import type { File } from '@/lib/db/models/file';
 import { Folder } from '@/lib/db/models/folder';
 import { fetchApi } from '@/lib/fetchApi';
-import { conditionalWarning } from '@/lib/warningModal';
-import { Anchor } from '@mantine/core';
+import { conditionalWarning } from '@/lib/client/warningModal';
+import { getDomain } from '@/lib/client/webDomain';
+import { formatRootUrl } from '@/lib/url';
 import { useClipboard } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
 import {
-  IconCopy,
   IconFolderMinus,
   IconFolderOff,
   IconFolderPlus,
@@ -16,38 +18,24 @@ import {
   IconTrashFilled,
   IconTrashXFilled,
 } from '@tabler/icons-react';
-import { Link } from 'react-router-dom';
 import { mutate } from 'swr';
 
 export function viewFile(file: File) {
-  window.open(`/view/${file.name}`, '_blank');
+  window.open(formatRootUrl('/view', file.name), '_blank');
 }
 
 export function downloadFile(file: File) {
-  window.open(`/raw/${file.name}?download=true`, '_blank');
+  window.open(formatRootUrl('/raw', file.name, { download: 'true' }), '_blank');
 }
 
 export function copyFile(file: File, clipboard: ReturnType<typeof useClipboard>, raw: boolean = false) {
-  const domain = `${window.location.protocol}//${window.location.host}`;
-
   const url = raw
-    ? `${domain}/raw/${file.name}`
+    ? getDomain(formatRootUrl('/raw', file.name))
     : file.url
-      ? `${domain}${file.url}`
-      : `${domain}/view/${file.name}`;
+      ? getDomain(file.url)
+      : getDomain(formatRootUrl('/view', file.name));
 
-  clipboard.copy(url);
-
-  notifications.show({
-    title: 'Copied link',
-    message: (
-      <Anchor component={Link} to={url}>
-        {url}
-      </Anchor>
-    ),
-    color: 'green',
-    icon: <IconCopy size='1rem' />,
-  });
+  copyLink(url, clipboard);
 }
 
 export async function deleteFile(warnDeletion: boolean, file: File, setOpen: (open: boolean) => void) {
@@ -110,43 +98,40 @@ export async function favoriteFile(file: File) {
   mutateFiles();
 }
 
-export function createFolderAndAdd(file: File, folderName: string | null) {
-  fetchApi<Extract<Response['/api/user/folders'], Folder>>('/api/user/folders', 'POST', {
-    name: folderName,
-    files: [file.id],
-  }).then(({ data, error }) => {
-    if (error) {
-      notifications.show({
-        title: 'Error while creating folder',
-        message: error.error,
-        color: 'red',
-        icon: <IconFolderOff size='1rem' />,
-      });
-    } else {
-      notifications.show({
-        title: 'Folder created',
-        message: `${data!.name} has been created with ${file.name}`,
-        color: 'green',
-        icon: <IconFolderPlus size='1rem' />,
-      });
-    }
-  });
+export async function createFolderAndAdd(file: File, folderName: string | null) {
+  const { data, error } = await fetchApi<Extract<Response['/api/user/folders'], Folder>>(
+    '/api/user/folders',
+    'POST',
+    {
+      name: folderName,
+      files: [file.id],
+    },
+  );
+  if (error) {
+    notifications.show({
+      title: 'Error while creating folder',
+      message: error.error,
+      color: 'red',
+      icon: <IconFolderOff size='1rem' />,
+    });
+  } else {
+    notifications.show({
+      title: 'Folder created',
+      message: `${data!.name} has been created with ${file.name}`,
+      color: 'green',
+      icon: <IconFolderPlus size='1rem' />,
+    });
+  }
 
-  mutateFolders();
+  mutateFolder();
   mutateFiles();
-
-  return undefined;
 }
 
 export async function removeFromFolder(file: File) {
-  const { data, error } = await fetchApi<Response['/api/user/files/[id]']>(
-    `/api/user/folders/${file.folderId}`,
-    'DELETE',
-    {
-      delete: 'file',
-      id: file.id,
-    },
-  );
+  const { data, error } = await fetchApi<{ folder: Folder }>(`/api/user/folders/${file.folderId}`, 'DELETE', {
+    delete: 'file',
+    id: file.id,
+  });
 
   if (error) {
     notifications.show({
@@ -158,13 +143,13 @@ export async function removeFromFolder(file: File) {
   } else {
     notifications.show({
       title: 'File removed from folder',
-      message: `${file.name} has been removed from ${data!.name}`,
+      message: `${file.name} has been removed from ${data?.folder.name}`,
       color: 'green',
       icon: <IconFolderMinus size='1rem' />,
     });
   }
 
-  mutateFolders();
+  mutateFolder();
   mutateFiles();
 }
 
@@ -195,7 +180,7 @@ export async function addToFolder(file: File, folderId: string | null) {
     });
   }
 
-  mutateFolders();
+  mutateFolder();
   mutateFiles();
 }
 
@@ -227,16 +212,11 @@ export async function addMultipleToFolder(files: File[], folderId: string | null
     });
   }
 
-  mutateFolders();
+  mutateFolder();
   mutateFiles();
 }
 
 export function mutateFiles() {
   mutate('/api/user/recent');
   mutate((key) => (key as Record<any, any>)?.key === '/api/user/files'); // paged files
-}
-
-export function mutateFolders() {
-  mutate('/api/user/folders');
-  mutate('/api/user/folders?noincl=true');
 }

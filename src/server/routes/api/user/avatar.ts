@@ -1,32 +1,40 @@
-import { prisma } from '@/lib/db';
-import { User } from '@/lib/db/models/user';
+import { ApiError } from '@/lib/api/errors';
+import { db } from '@/lib/db';
+import { users } from '@/lib/db/schema';
 import { userMiddleware } from '@/server/middleware/user';
-import fastifyPlugin from 'fastify-plugin';
+import typedPlugin from '@/server/typedPlugin';
+import { eq } from 'drizzle-orm';
+import z from 'zod';
 
-export type ApiUserTokenResponse = {
-  user?: User;
-  token?: string;
-};
+export type ApiUserAvatarResponse = string;
 
 export const PATH = '/api/user/avatar';
-export default fastifyPlugin(
-  (server, _, done) => {
-    server.get(PATH, { preHandler: [userMiddleware] }, async (req, res) => {
-      const u = await prisma.user.findFirstOrThrow({
-        where: {
-          id: req.user.id,
+export default typedPlugin(
+  async (server) => {
+    server.get(
+      PATH,
+      {
+        schema: {
+          description: "Return the current user's avatar as a base64 data URL.",
+          response: {
+            200: z.string().describe('data URL with base64'),
+          },
+          tags: ['auth'],
         },
-        select: {
-          avatar: true,
-        },
-      });
+        preHandler: [userMiddleware],
+      },
+      async (req, res) => {
+        const [user] = await db
+          .select({ avatar: users.avatar })
+          .from(users)
+          .where(eq(users.id, req.user.id))
+          .limit(1);
 
-      if (!u.avatar) return res.notFound();
+        if (!user?.avatar) throw new ApiError(9002);
 
-      return res.send(u.avatar);
-    });
-
-    done();
+        return res.send(user.avatar);
+      },
+    );
   },
   { name: PATH },
 );

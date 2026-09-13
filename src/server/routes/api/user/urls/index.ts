@@ -1,13 +1,19 @@
+import { ApiError } from '@/lib/api/errors';
 import { config } from '@/lib/config';
 import { hashPassword } from '@/lib/crypto';
-import { randomCharacters } from '@/lib/random';
-import { prisma } from '@/lib/db';
-import { cleanUrlPasswords, Url } from '@/lib/db/models/url';
+import { db } from '@/lib/db';
+import { Url, urlSchema } from '@/lib/db/models/url';
+import { urls, users } from '@/lib/db/schema';
+import { containsText } from '@/lib/db/utils';
 import { log } from '@/lib/logger';
-import { z } from 'zod';
+import { randomCharacters } from '@/lib/random';
+import { RESERVED_ROUTES } from '@/lib/reservedRoutes';
+import { zStringTrimmed } from '@/lib/validation';
 import { onShorten } from '@/lib/webhooks';
-import fastifyPlugin from 'fastify-plugin';
 import { userMiddleware } from '@/server/middleware/user';
+import typedPlugin from '@/server/typedPlugin';
+import { and, eq, getColumns, isNotNull } from 'drizzle-orm';
+import { z } from 'zod';
 
 export type ApiUserUrlsResponse =
   | Url[]
@@ -15,54 +21,64 @@ export type ApiUserUrlsResponse =
       url: string;
     } & Omit<Url, 'password'>);
 
-type Body = {
-  vanity?: string;
-  destination: string;
-  enabled?: boolean;
-};
-
-type Headers = {
-  'x-zipline-max-views': string;
-  'x-zipline-no-json': string;
-  'x-zipline-domain': string;
-  'x-zipline-password': string;
-};
-
-type Query = {
-  searchField?: 'destination' | 'vanity' | 'code';
-  searchQuery?: string;
-};
-
 export const PATH = '/api/user/urls';
-
-const validateSearchField = z.enum(['destination', 'vanity', 'code']).default('destination');
-
 const logger = log('api').c('user').c('urls');
+const { password: _password, ...urlColumns } = getColumns(urls);
 
-export default fastifyPlugin(
-  (server, _, done) => {
+export default typedPlugin(
+  async (server) => {
     const rateLimit = server.rateLimit
       ? server.rateLimit()
       : (_req: any, _res: any, next: () => any) => next();
 
-    server.post<{ Body: Body; Headers: Headers }>(
+    server.post(
       PATH,
-      { preHandler: [userMiddleware, rateLimit] },
+      {
+        schema: {
+          description:
+            'Create a new shortened URL for the authenticated user, with optional vanity, password, and max-views settings.',
+          body: z.object({
+            vanity: zStringTrimmed
+              .max(100)
+              .refine((str) => !str.startsWith('/'), 'Vanity cannot start with a slash.')
+              .refine(
+                (str) =>
+                  !RESERVED_ROUTES.some((route) => {
+                    const nStr = `/${str}`.toLowerCase();
+                    const nRoute = route.toLowerCase();
+
+                    return nStr === nRoute || nStr.startsWith(`${nRoute}/`);
+                  }),
+                'Vanity cannot start with a reserved route.',
+              )
+              .optional()
+              .nullish(),
+            destination: z.httpUrl().min(1),
+            enabled: z.boolean().optional(),
+          }),
+          headers: z.object({
+            'x-zipline-max-views': z.coerce.number().min(1).optional(),
+            'x-zipline-no-json': z
+              .enum(['false', 'true'])
+              .transform((val) => val.toLowerCase() === 'true')
+              .optional(),
+            'x-zipline-domain': z.string().optional(),
+            'x-zipline-password': z.string().optional(),
+          }),
+          response: {
+            200: z.union([
+              z.string(),
+              urlSchema.omit({ password: true }).extend({
+                url: z.string(),
+              }),
+            ]),
+          },
+        },
+        preHandler: [userMiddleware, rateLimit],
+      },
       async (req, res) => {
         const { vanity, destination, enabled } = req.body;
-        const noJson = !!req.headers['x-zipline-no-json'];
-
-        const countUrls = await prisma.url.count({
-          where: {
-            userId: req.user.id,
-          },
-        });
-        if (req.user.quota && req.user.quota.maxUrls && countUrls + 1 > req.user.quota.maxUrls)
-          return res.forbidden(
-            `Shortening this URL would exceed your quota of ${req.user.quota.maxUrls} URLs.`,
-          );
-
-        let maxViews: number | undefined;
+        const noJson = req.headers['x-zipline-no-json'];
 
         let returnDomain;
         const headerDomain = req.headers['x-zipline-domain'];
@@ -71,43 +87,51 @@ export default fastifyPlugin(
           returnDomain = domainArray[Math.floor(Math.random() * domainArray.length)].trim();
         }
 
-        const maxViewsHeader = req.headers['x-zipline-max-views'];
-        if (maxViewsHeader) {
-          maxViews = Number(maxViewsHeader);
-          if (isNaN(maxViews)) return res.badRequest('Max views must be a number');
-          if (maxViews < 0) return res.badRequest('Max views must be greater than 0');
-        }
+        const maxViews = req.headers['x-zipline-max-views'];
 
         const password = req.headers['x-zipline-password']
           ? await hashPassword(req.headers['x-zipline-password'])
           : undefined;
 
-        if (!destination) return res.badRequest('Destination is required');
-
         if (vanity) {
-          const existingVanity = await prisma.url.findFirst({
-            where: {
-              vanity: vanity,
-            },
-          });
-
-          if (existingVanity) return res.badRequest('Vanity already taken');
+          const vanityCount = await db.$count(urls, eq(urls.vanity, vanity));
+          if (vanityCount > 0) throw new ApiError(1042);
         }
 
-        const url = await prisma.url.create({
-          data: {
-            userId: req.user.id,
-            destination: destination,
-            code: randomCharacters(config.urls.length),
-            ...(vanity && { vanity: vanity }),
-            ...(maxViews && { maxViews: maxViews }),
-            ...(password && { password: password }),
-            ...(enabled !== undefined && { enabled: enabled }),
-          },
-          omit: {
-            password: true,
-          },
+        let code, existingCode;
+        do {
+          code = randomCharacters(config.urls.length);
+          const codeCount = await db.$count(urls, eq(urls.code, code));
+          existingCode = codeCount > 0;
+        } while (existingCode);
+
+        const url = await db.transaction(async (tx) => {
+          await tx.select({ id: users.id }).from(users).where(eq(users.id, req.user.id)).for('update');
+
+          const count = await tx.$count(urls, eq(urls.userId, req.user.id));
+          if (req.user.quota?.maxUrls && count + 1 > req.user.quota.maxUrls) return null;
+
+          const [created] = await tx
+            .insert(urls)
+            .values({
+              userId: req.user.id,
+              destination,
+              code,
+              vanity,
+              maxViews,
+              password,
+              enabled,
+            })
+            .returning(urlColumns);
+          if (!created) throw new ApiError(9005);
+
+          return created;
         });
+        if (!url)
+          throw new ApiError(
+            3012,
+            `Shortening this URL would exceed your quota of ${req.user.quota?.maxUrls} URLs.`,
+          );
 
         let domain;
         if (returnDomain) {
@@ -145,40 +169,44 @@ export default fastifyPlugin(
       },
     );
 
-    server.get<{ Querystring: Query }>(PATH, { preHandler: [userMiddleware] }, async (req, res) => {
-      const searchQuery = req.query.searchQuery
-        ? (decodeURIComponent(req.query.searchQuery.trim()) ?? null)
-        : null;
-      const searchField = validateSearchField.safeParse(req.query.searchField || 'destination');
-      if (!searchField.success) return res.badRequest('Invalid searchField value');
-
-      if (searchQuery) {
-        const similarityResult = await prisma.url.findMany({
-          where: {
-            [searchField.data]: {
-              mode: 'insensitive',
-              contains: searchQuery,
-            },
-            userId: req.user.id,
+    server.get(
+      PATH,
+      {
+        schema: {
+          description: 'List or search shortened URLs owned by the authenticated user.',
+          querystring: z.object({
+            searchField: z.enum(['destination', 'vanity', 'code']).default('destination'),
+            searchQuery: z.string().min(1).optional(),
+          }),
+          response: {
+            200: z.array(urlSchema),
           },
-          omit: {
-            password: true,
-          },
-        });
-
-        return res.send(similarityResult);
-      }
-
-      const urls = await prisma.url.findMany({
-        where: {
-          userId: req.user.id,
         },
-      });
+        preHandler: [userMiddleware],
+      },
+      async (req, res) => {
+        const { searchField, searchQuery } = req.query;
 
-      return res.send(cleanUrlPasswords(urls));
-    });
+        let search;
+        if (searchQuery) {
+          const searchColumn = {
+            destination: urls.destination,
+            vanity: urls.vanity,
+            code: urls.code,
+          }[searchField];
+          search = containsText(searchColumn, searchQuery);
+        }
 
-    done();
+        const urlList = await db
+          .select({
+            ...urlColumns,
+            password: isNotNull(urls.password).mapWith(Boolean).as('password'),
+          })
+          .from(urls)
+          .where(and(eq(urls.userId, req.user.id), search));
+        return res.send(urlList);
+      },
+    );
   },
   { name: PATH },
 );

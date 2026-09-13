@@ -1,16 +1,22 @@
-import { ActionIcon, Button, CopyButton, Paper, ScrollArea, Text, useMantineTheme } from '@mantine/core';
+import { ActionIcon, Button, CopyButton, Paper, Text, useMantineTheme } from '@mantine/core';
 import { IconCheck, IconChevronDown, IconChevronUp, IconClipboardCopy } from '@tabler/icons-react';
 import type { HLJSApi } from 'highlight.js';
+import * as sanitize from 'isomorphic-dompurify';
 import { useEffect, useMemo, useState } from 'react';
-import { FixedSizeList as List } from 'react-window';
-
-import { useLocation } from 'react-router-dom';
+import { Virtuoso } from 'react-virtuoso';
 import './HighlightCode.theme.scss';
 
-export default function HighlightCode({ language, code }: { language: string; code: string }) {
-  const { pathname } = useLocation();
-  const noClamp = pathname.startsWith('/view/');
-
+export default function HighlightCode({
+  language,
+  code,
+  noClamp,
+  scrollParent,
+}: {
+  noClamp?: boolean;
+  language: string;
+  code: string;
+  scrollParent?: HTMLElement | null;
+}) {
   const theme = useMantineTheme();
   const [expanded, setExpanded] = useState(false);
   const [hljs, setHljs] = useState<HLJSApi | null>(null);
@@ -20,36 +26,34 @@ export default function HighlightCode({ language, code }: { language: string; co
   }, []);
 
   const lines = useMemo(() => code.split('\n'), [code]);
-  const visible = expanded || noClamp ? lines.length : Math.min(lines.length, 50);
-  const expandable = !noClamp && lines.length > 50;
+  const isExpandable = !noClamp && lines.length > 50;
+  const totalCount = isExpandable && !expanded ? 50 : lines.length;
+  const estimatedHeight = Math.min(totalCount * 24, 400);
 
   const lang = useMemo(() => {
     if (!hljs) return 'plaintext';
-    if (hljs.getLanguage(language)) return language;
-
-    return 'plaintext';
+    return hljs.getLanguage(language) ? language : 'plaintext';
   }, [hljs, language]);
 
   const hlLines = useMemo(() => {
-    if (!hljs) return lines;
-
-    return lines.map(
-      (line) =>
-        hljs.highlight(line, {
-          language: lang,
-        }).value,
+    if (!hljs) return null;
+    return lines.map((line) =>
+      sanitize.sanitize(hljs.highlight(line || ' ', { language: lang }).value, {
+        USE_PROFILES: { html: true },
+      }),
     );
   }, [lines, hljs, lang]);
 
-  const Row = ({ index, style }: { index: number; style: React.CSSProperties }) => (
+  const rowRenderer = (index: number) => (
     <div
+      key={index}
       style={{
-        ...style,
         display: 'flex',
         alignItems: 'flex-start',
         whiteSpace: 'pre',
-        fontFamily: 'monospace',
+        fontFamily: theme.fontFamilyMonospace,
         fontSize: '0.8rem',
+        lineHeight: '1.5',
       }}
     >
       <Text
@@ -68,55 +72,57 @@ export default function HighlightCode({ language, code }: { language: string; co
 
       <code
         className='theme hljs'
-        style={{ flex: 1, fontSize: '0.8rem' }}
-        dangerouslySetInnerHTML={{ __html: hlLines[index] }}
-      />
+        style={{ flex: 1, padding: 0, background: 'none', alignSelf: 'center' }}
+        dangerouslySetInnerHTML={hlLines ? { __html: hlLines[index] } : undefined}
+      >
+        {hlLines ? null : lines[index]}
+      </code>
     </div>
   );
 
   return (
-    <Paper withBorder p='xs' my='md' pos='relative'>
+    <Paper withBorder p='xs' my='md' pos='relative' style={{ overflow: 'hidden' }}>
       <CopyButton value={code}>
         {({ copied, copy }) => (
           <ActionIcon
             onClick={copy}
             variant='outline'
-            color={copied ? 'green' : 'gray'}
+            color={copied ? 'green' : undefined}
             size='md'
-            style={{ zIndex: 4, position: 'absolute', top: '0.5rem', right: '0.5rem' }}
+            style={{ zIndex: 10, position: 'absolute', top: '0.5rem', right: '0.5rem' }}
           >
-            {!copied ? (
-              <IconClipboardCopy size='1rem' />
-            ) : (
+            {copied ? (
               <IconCheck color={theme.colors.green[4]} size='1rem' />
+            ) : (
+              <IconClipboardCopy size='1rem' />
             )}
           </ActionIcon>
         )}
       </CopyButton>
 
-      {noClamp ? (
-        <ScrollArea type='auto' offsetScrollbars={false}>
-          <div>
-            {hlLines.map((_, index) => (
-              <Row key={index} index={index} style={{}} />
-            ))}
-          </div>
-        </ScrollArea>
-      ) : (
-        <ScrollArea type='auto' offsetScrollbars={false} style={{ maxHeight: 400 }}>
-          <List height={400} width='100%' itemCount={visible} itemSize={20} overscanCount={10}>
-            {Row}
-          </List>
-        </ScrollArea>
-      )}
+      <div style={{ height: noClamp ? undefined : estimatedHeight, overflowX: 'auto' }}>
+        <Virtuoso
+          useWindowScroll={!!noClamp && !scrollParent}
+          customScrollParent={scrollParent ?? undefined}
+          style={{ height: noClamp ? undefined : '100%' }}
+          totalCount={totalCount}
+          itemContent={rowRenderer}
+          increaseViewportBy={400}
+        />
+      </div>
 
-      {expandable && (
+      {isExpandable && (
         <Button
           variant='light'
           size='compact-sm'
           onClick={() => setExpanded((e) => !e)}
           leftSection={expanded ? <IconChevronUp size='1rem' /> : <IconChevronDown size='1rem' />}
-          style={{ position: 'absolute', bottom: '0.5rem', right: '0.5rem' }}
+          style={{
+            position: 'absolute',
+            bottom: '0.5rem',
+            right: '0.5rem',
+            zIndex: 10,
+          }}
         >
           {expanded ? 'Show Less' : `Show More (${lines.length - 50} more lines)`}
         </Button>

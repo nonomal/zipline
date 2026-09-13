@@ -7,15 +7,14 @@ export default defineConfig(async (_) => {
   return [
     {
       platform: 'node',
-      format: 'cjs',
+      format: 'esm',
       outExtension: () => ({ js: '.js' }),
       clean: true,
       sourcemap: true,
       entry: await glob('./src/**/*.ts', {
-        ignore: ['./src/components/**/*.ts', './src/client/**/*.(ts|tsx|html)'],
+        ignore: ['./src/**/*.d.ts', './src/components/**/*.ts', './src/client/**/*.(ts|tsx|html)'],
       }),
-      shims: true,
-      esbuildPlugins: [],
+      shims: false,
       outDir: 'build',
       bundle: false,
       onSuccess: async () => {
@@ -23,6 +22,8 @@ export default defineConfig(async (_) => {
         await replaceTscAliasPaths({
           configFile: 'tsconfig.json',
           outDir: 'build',
+          resolveFullPaths: true,
+          resolveFullExtension: '.js',
         });
 
         console.log('[built-ins] copying builtins...');

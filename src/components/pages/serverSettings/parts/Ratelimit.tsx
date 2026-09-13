@@ -1,45 +1,42 @@
-import { Response } from '@/lib/api/response';
-import {
-  Button,
-  LoadingOverlay,
-  NumberInput,
-  Paper,
-  SimpleGrid,
-  Switch,
-  Text,
-  TextInput,
-  Title,
-} from '@mantine/core';
+import type { Response } from '@/lib/api/response';
+import { Button, LoadingOverlay, NumberInput, Stack, Switch, Text, TextInput } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { IconDeviceFloppy } from '@tabler/icons-react';
-import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { settingsOnSubmit } from '../settingsOnSubmit';
+import useServerSettings from '../useServerSettings';
 
-export default function Ratelimit({
-  swr: { data, isLoading },
-}: {
-  swr: { data: Response['/api/server/settings'] | undefined; isLoading: boolean };
-}) {
+export default function Ratelimit() {
+  const { data, isLoading } = useServerSettings();
+
+  return (
+    <>
+      <LoadingOverlay visible={isLoading} />
+      {data ? <Form data={data} isLoading={isLoading} /> : null}
+    </>
+  );
+}
+
+function Form({ data, isLoading }: { data: Response['/api/server/settings']; isLoading: boolean }) {
   const navigate = useNavigate();
 
   const form = useForm<{
     ratelimitEnabled: boolean;
     ratelimitMax: number;
-    ratelimitWindow: number | '';
+    ratelimitWindow: number | '' | null;
     ratelimitAdminBypass: boolean;
     ratelimitAllowList: string;
   }>({
     initialValues: {
-      ratelimitEnabled: true,
-      ratelimitMax: 10,
-      ratelimitWindow: '',
-      ratelimitAdminBypass: false,
-      ratelimitAllowList: '',
+      ratelimitEnabled: data.settings.ratelimitEnabled,
+      ratelimitMax: data.settings.ratelimitMax,
+      ratelimitWindow: data.settings.ratelimitWindow,
+      ratelimitAdminBypass: data.settings.ratelimitAdminBypass,
+      ratelimitAllowList: data.settings.ratelimitAllowList.join(', '),
     },
     enhanceGetInputProps: (payload: any): object => ({
       disabled:
-        data?.tampered?.includes(payload.field) ||
+        data.tampered.includes(payload.field) ||
         (payload.field !== 'ratelimitEnabled' && !form.values.ratelimitEnabled) ||
         false,
     }),
@@ -65,30 +62,14 @@ export default function Ratelimit({
     return settingsOnSubmit(navigate, form)(values);
   };
 
-  useEffect(() => {
-    if (!data) return;
-
-    form.setValues({
-      ratelimitEnabled: data.settings.ratelimitEnabled ?? true,
-      ratelimitMax: data.settings.ratelimitMax ?? 10,
-      ratelimitWindow: data.settings.ratelimitWindow ?? '',
-      ratelimitAdminBypass: data.settings.ratelimitAdminBypass ?? false,
-      ratelimitAllowList: data.settings.ratelimitAllowList.join(', ') ?? '',
-    });
-  }, [data]);
-
   return (
-    <Paper withBorder p='sm' pos='relative'>
-      <LoadingOverlay visible={isLoading} />
-
-      <Title order={2}>Ratelimit</Title>
-
-      <Text c='dimmed' size='sm'>
+    <>
+      <Text size='sm' c='dimmed' mb='md'>
         All options require a restart to take effect.
       </Text>
 
       <form onSubmit={form.onSubmit(onSubmit)}>
-        <SimpleGrid mt='md' cols={{ base: 1, md: 2 }} spacing='lg'>
+        <Stack gap='lg'>
           <Switch
             label='Enable Ratelimit'
             description='Enable ratelimiting for the server.'
@@ -123,12 +104,12 @@ export default function Ratelimit({
             placeholder='192.168.1.1, 127.0.0.1, 0.0.0.0'
             {...form.getInputProps('ratelimitAllowList')}
           />
-        </SimpleGrid>
+        </Stack>
 
         <Button type='submit' mt='md' loading={isLoading} leftSection={<IconDeviceFloppy size='1rem' />}>
           Save
         </Button>
       </form>
-    </Paper>
+    </>
   );
 }

@@ -1,6 +1,8 @@
 import { Worker } from 'worker_threads';
 import Logger, { log } from '../logger';
 import { config } from '../config';
+import { MAX_SAFE_TIMEOUT_MS } from '../config/validate';
+import { createWorker } from '../worker';
 
 export interface Task {
   id: string;
@@ -82,6 +84,17 @@ export class Tasks {
       return;
     }
 
+    if (task.interval > MAX_SAFE_TIMEOUT_MS) {
+      this.logger.error('interval exceeds maximum safe timeout', {
+        id: task.id,
+        interval: task.interval,
+        maxSafeTimeout: MAX_SAFE_TIMEOUT_MS,
+        message: 'Interval exceeds JavaScript timer limit (~24 days). Task will not be started.',
+      });
+
+      return;
+    }
+
     task.started = true;
 
     const timeout = setInterval(task.func.bind(task), task.interval);
@@ -100,7 +113,7 @@ export class Tasks {
       task.data.config = config;
     }
 
-    const worker = new Worker(task.path, {
+    const worker = createWorker(task.path, {
       workerData: task.data,
     });
 
@@ -156,5 +169,9 @@ export class Tasks {
     if (start) this.startWorker(this.tasks[len - 1] as WorkerTask<Data>);
 
     return this.tasks[len - 1] as WorkerTask<Data>;
+  }
+
+  public workersBy(starting: string): WorkerTask[] {
+    return this.tasks.filter((x) => 'worker' in x && x.id.startsWith(starting)) as WorkerTask[];
   }
 }

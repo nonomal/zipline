@@ -4,13 +4,23 @@ import { Center, Group, Paper, SimpleGrid, Skeleton, Stack, Text, Title } from '
 import { IconLink } from '@tabler/icons-react';
 import useSWR from 'swr';
 import InviteCard from '../InviteCard';
+import { useState } from 'react';
+import QRCodeModal from '@/components/QRCodeModal';
 
 export default function InviteGridView() {
-  const { data: folders, isLoading } =
+  const { data: invites, isLoading } =
     useSWR<Extract<Response['/api/auth/invites'], Invite[]>>('/api/auth/invites');
+
+  const [qrOpen, setQrOpen] = useState<Invite | null>(null);
 
   return (
     <>
+      <QRCodeModal
+        opened={!!qrOpen}
+        onClose={() => setQrOpen(null)}
+        url={qrOpen ? `/invite/${qrOpen.code}` : ''}
+      />
+
       {isLoading ? (
         <SimpleGrid
           my='sm'
@@ -26,7 +36,7 @@ export default function InviteGridView() {
             <Skeleton key={i} height={120} animate />
           ))}
         </SimpleGrid>
-      ) : (folders?.length ?? 0 !== 0) ? (
+      ) : (invites?.length ?? 0) !== 0 ? (
         <SimpleGrid
           my='sm'
           spacing='md'
@@ -37,8 +47,8 @@ export default function InviteGridView() {
           }}
           pos='relative'
         >
-          {folders?.map((invite) => (
-            <InviteCard key={invite.id} invite={invite} />
+          {invites?.map((invite) => (
+            <InviteCard setQrOpen={setQrOpen} key={invite.id} invite={invite} />
           ))}
         </SimpleGrid>
       ) : (

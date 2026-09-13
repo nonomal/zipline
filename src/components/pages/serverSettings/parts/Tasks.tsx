@@ -1,57 +1,49 @@
-import { Response } from '@/lib/api/response';
-import { Button, LoadingOverlay, Paper, SimpleGrid, Text, TextInput, Title } from '@mantine/core';
+import type { Response } from '@/lib/api/response';
+import { Button, Code, LoadingOverlay, Stack, Text, TextInput } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { IconDeviceFloppy } from '@tabler/icons-react';
-import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { settingsOnSubmit } from '../settingsOnSubmit';
+import useServerSettings from '../useServerSettings';
 
-export default function Tasks({
-  swr: { data, isLoading },
-}: {
-  swr: { data: Response['/api/server/settings'] | undefined; isLoading: boolean };
-}) {
+export default function Tasks() {
+  const { data, isLoading } = useServerSettings();
+
+  return (
+    <>
+      <LoadingOverlay visible={isLoading} />
+      {data ? <Form data={data} isLoading={isLoading} /> : null}
+    </>
+  );
+}
+
+function Form({ data, isLoading }: { data: Response['/api/server/settings']; isLoading: boolean }) {
   const navigate = useNavigate();
 
   const form = useForm({
     initialValues: {
-      tasksDeleteInterval: '30m',
-      tasksClearInvitesInterval: '30m',
-      tasksMaxViewsInterval: '30m',
-      tasksThumbnailsInterval: '30m',
-      tasksMetricsInterval: '30m',
+      tasksDeleteInterval: data.settings.tasksDeleteInterval,
+      tasksClearInvitesInterval: data.settings.tasksClearInvitesInterval,
+      tasksMaxViewsInterval: data.settings.tasksMaxViewsInterval,
+      tasksThumbnailsInterval: data.settings.tasksThumbnailsInterval,
+      tasksMetricsInterval: data.settings.tasksMetricsInterval,
+      tasksCleanThumbnailsInterval: data.settings.tasksCleanThumbnailsInterval,
     },
     enhanceGetInputProps: (payload) => ({
-      disabled: data?.tampered?.includes(payload.field) || false,
+      disabled: data.tampered.includes(payload.field) || false,
     }),
   });
 
   const onSubmit = settingsOnSubmit(navigate, form);
 
-  useEffect(() => {
-    if (!data) return;
-
-    form.setValues({
-      tasksDeleteInterval: data.settings.tasksDeleteInterval ?? '30m',
-      tasksClearInvitesInterval: data.settings.tasksClearInvitesInterval ?? '30m',
-      tasksMaxViewsInterval: data.settings.tasksMaxViewsInterval ?? '30m',
-      tasksThumbnailsInterval: data.settings.tasksThumbnailsInterval ?? '30m',
-      tasksMetricsInterval: data.settings.tasksMetricsInterval ?? '30m',
-    });
-  }, [data]);
-
   return (
-    <Paper withBorder p='sm' pos='relative'>
-      <LoadingOverlay visible={isLoading} />
-
-      <Title order={2}>Tasks</Title>
-
-      <Text c='dimmed' size='sm'>
-        All options require a restart to take effect.
+    <>
+      <Text size='sm' c='dimmed' mb='md'>
+        All options require a restart to take effect. Setting a value of <Code>0</Code> will disable the task.
       </Text>
 
       <form onSubmit={form.onSubmit(onSubmit)}>
-        <SimpleGrid mt='md' cols={{ base: 1, md: 2 }} spacing='lg'>
+        <Stack gap='lg'>
           <TextInput
             label='Delete Files Interval'
             description='How often to check and delete expired files.'
@@ -79,12 +71,26 @@ export default function Tasks({
             placeholder='30m'
             {...form.getInputProps('tasksThumbnailsInterval')}
           />
-        </SimpleGrid>
+
+          <TextInput
+            label='Clean Thumbnails Interval'
+            description='How often to check and delete orphaned thumbnails from the filesystem or database.'
+            placeholder='1d'
+            {...form.getInputProps('tasksCleanThumbnailsInterval')}
+          />
+
+          <TextInput
+            label='Metrics Interval'
+            description='How often to collect metrics data. Setting this to a lower value will give you more up-to-date metrics, but may increase CPU usage.'
+            placeholder='30m'
+            {...form.getInputProps('tasksMetricsInterval')}
+          />
+        </Stack>
 
         <Button type='submit' mt='md' loading={isLoading} leftSection={<IconDeviceFloppy size='1rem' />}>
           Save
         </Button>
       </form>
-    </Paper>
+    </>
   );
 }

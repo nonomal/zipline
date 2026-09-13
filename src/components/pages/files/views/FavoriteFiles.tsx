@@ -1,4 +1,3 @@
-import { useQueryState } from '@/lib/hooks/useQueryState';
 import {
   Accordion,
   Button,
@@ -16,11 +15,12 @@ import { IconFileUpload, IconFilesOff } from '@tabler/icons-react';
 import { Link } from 'react-router-dom';
 import { useApiPagination } from '../useApiPagination';
 import { lazy, Suspense } from 'react';
+import { parseAsInteger, useQueryState } from 'nuqs';
 
 const DashboardFile = lazy(() => import('@/components/file/DashboardFile'));
 
 export default function FavoriteFiles() {
-  const [page, setPage] = useQueryState('fpage', 1);
+  const [page, setPage] = useQueryState('fpage', parseAsInteger.withDefault(1));
 
   const { data, isLoading } = useApiPagination({
     page,
@@ -43,7 +43,7 @@ export default function FavoriteFiles() {
             cols={{
               base: 1,
               md: 2,
-              lg: (data?.page.length ?? 0 > 0) ? 3 : 1,
+              lg: (data?.page.length ?? 0) > 0 ? 3 : 1,
             }}
             spacing='md'
             pos='relative'
@@ -52,7 +52,7 @@ export default function FavoriteFiles() {
               <Paper withBorder h={200}>
                 <LoadingOverlay visible />
               </Paper>
-            ) : (data?.page.length ?? 0 > 0) ? (
+            ) : (data?.page.length ?? 0) > 0 ? (
               data?.page.map((file) => (
                 <Suspense fallback={<Skeleton height={350} animate />} key={file.id}>
                   <DashboardFile file={file} />

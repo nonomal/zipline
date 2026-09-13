@@ -1,13 +1,17 @@
+import FolderComboboxOptions from '@/components/folders/FolderComboboxOptions';
 import TagPill from '@/components/pages/files/tags/TagPill';
 import { Response } from '@/lib/api/response';
 import { bytes } from '@/lib/bytes';
+import { useFolders } from '@/lib/client/hooks/useFolders';
+import { useFileNavStore } from '@/lib/client/store/fileNav';
+import { useSettingsStore } from '@/lib/client/store/settings';
 import { File } from '@/lib/db/models/file';
-import { Folder } from '@/lib/db/models/folder';
 import { Tag } from '@/lib/db/models/tag';
 import { fetchApi } from '@/lib/fetchApi';
-import { useSettingsStore } from '@/lib/store/settings';
+import { buildFolderHierarchy } from '@/lib/folderHierarchy';
 import {
   ActionIcon,
+  ActionIconProps,
   Box,
   Button,
   Checkbox,
@@ -29,6 +33,8 @@ import { showNotification } from '@mantine/notifications';
 import {
   Icon,
   IconBombFilled,
+  IconChevronLeft,
+  IconChevronRight,
   IconClipboardTypography,
   IconCopy,
   IconDeviceSdCard,
@@ -46,9 +52,12 @@ import {
   IconTextRecognition,
   IconTrashFilled,
   IconUpload,
+  IconUserQuestion,
 } from '@tabler/icons-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import useSWR, { mutate } from 'swr';
+import { useShallow } from 'zustand/shallow';
+
 import DashboardFileType from '../DashboardFileType';
 import {
   addToFolder,
@@ -69,15 +78,16 @@ function ActionButton({
   onClick,
   tooltip,
   color,
+  ...props
 }: {
   Icon: Icon;
   onClick: () => void;
   tooltip: string;
   color?: string;
-}) {
+} & ActionIconProps) {
   return (
     <Tooltip label={tooltip}>
-      <ActionIcon variant='filled' color={color ?? 'gray'} onClick={onClick}>
+      <ActionIcon variant='filled' color={color ?? 'gray'} onClick={onClick} {...props}>
         <Icon size='1rem' />
       </ActionIcon>
     </Tooltip>
@@ -90,30 +100,36 @@ export default function FileModal({
   file,
   reduce,
   user,
+  sequenced,
 }: {
   open: boolean;
   setOpen: (open: boolean) => void;
   file?: File | null;
   reduce?: boolean;
   user?: string;
+  sequenced?: boolean;
 }) {
   const clipboard = useClipboard();
   const warnDeletion = useSettingsStore((state) => state.settings.warnDeletion);
+  const fileNavButtons = useSettingsStore((state) => state.settings.fileNavButtons);
 
   const [editFileOpen, setEditFileOpen] = useState(false);
 
-  const { data: folders } = useSWR<Extract<Response['/api/user/folders'], Folder[]>>(
-    '/api/user/folders?noincl=true' + (user ? `&user=${user}` : ''),
-  );
+  const { data: folders } = useFolders(user);
+
+  const folderOptions = useMemo(() => {
+    if (!folders) return [];
+    return buildFolderHierarchy(folders);
+  }, [folders]);
 
   const folderCombobox = useCombobox();
   const [search, setSearch] = useState('');
 
   const handleAdd = async (value: string) => {
     if (value === '$create') {
-      createFolderAndAdd(file!, search.trim());
+      await createFolderAndAdd(file!, search.trim());
     } else {
-      addToFolder(file!, value);
+      await addToFolder(file!, value);
     }
   };
 
@@ -122,7 +138,9 @@ export default function FileModal({
   );
 
   const tagsCombobox = useCombobox();
-  const [value, setValue] = useState(file?.tags?.map((x) => x.id) ?? []);
+
+  const [value, setValue] = useState<string[]>(() => file?.tags?.map((x) => x.id) ?? []);
+
   const handleValueSelect = (val: string) => {
     setValue((current) => (current.includes(val) ? current.filter((v) => v !== val) : [...current, val]));
   };
@@ -172,13 +190,33 @@ export default function FileModal({
 
   const values = value.map((tag) => <TagPill key={tag} tag={tags?.find((t) => t.id === tag) || null} />);
 
+  const [goPrev, goNext, hasPrev, hasNext] = useFileNavStore(
+    useShallow((state) => {
+      if (!state.current) {
+        return [state.goPrev, state.goNext, false, false];
+      }
+
+      const idx = state.ids.indexOf(state.current);
+      return [state.goPrev, state.goNext, idx > 0, idx >= 0 && idx < state.ids.length - 1];
+    }),
+  );
+
   useEffect(() => {
-    if (file) {
-      setValue(file.tags?.map((x) => x.id) ?? []);
-    } else {
-      setValue([]);
-    }
-  }, [file]);
+    if (!open || !sequenced) return;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'ArrowLeft' && hasPrev) {
+        goPrev();
+      } else if (event.key === 'ArrowRight' && hasNext) {
+        goNext();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [open, sequenced, hasPrev, hasNext, goPrev, goNext]);
 
   return (
     <>
@@ -199,7 +237,7 @@ export default function FileModal({
       >
         {file ? (
           <>
-            <DashboardFileType file={file} show />
+            {open && <DashboardFileType file={file} show />}
 
             <SimpleGrid cols={{ base: 1, md: 2, lg: 3 }} spacing='md' my='xs'>
               <FileStat Icon={IconFileInfo} title='Type' value={file.type} />
@@ -229,6 +267,7 @@ export default function FileModal({
               {file.originalName && (
                 <FileStat Icon={IconTextRecognition} title='Original Name' value={file.originalName} />
               )}
+              {file.anonymous && <FileStat Icon={IconUserQuestion} title='Anonymous' value='Yes' />}
             </SimpleGrid>
 
             {!reduce && (
@@ -237,12 +276,7 @@ export default function FileModal({
                   <Title order={4} mt='lg' mb='xs'>
                     Tags
                   </Title>
-                  <Combobox
-                    zIndex={90000}
-                    withinPortal={false}
-                    store={tagsCombobox}
-                    onOptionSubmit={handleValueSelect}
-                  >
+                  <Combobox zIndex={90000} store={tagsCombobox} onOptionSubmit={handleValueSelect}>
                     <Combobox.DropdownTarget>
                       <PillsInput
                         onBlur={() => triggerSave()}
@@ -318,7 +352,7 @@ export default function FileModal({
                     </Button>
                   ) : (
                     <Combobox
-                      withinPortal={false}
+                      zIndex={90000}
                       store={folderCombobox}
                       onOptionSubmit={(value) => handleAdd(value)}
                     >
@@ -331,11 +365,17 @@ export default function FileModal({
                             folderCombobox.updateSelectedOptionIndex();
                             setSearch(event.currentTarget.value);
                           }}
-                          onClick={() => folderCombobox.openDropdown()}
-                          onFocus={() => folderCombobox.openDropdown()}
+                          onClick={() => {
+                            folderCombobox.openDropdown();
+                            setSearch('');
+                          }}
+                          onFocus={() => {
+                            folderCombobox.openDropdown();
+                            setSearch('');
+                          }}
                           onBlur={() => {
                             folderCombobox.closeDropdown();
-                            setSearch(search || '');
+                            setSearch('');
                           }}
                           placeholder='Add to folder...'
                           rightSectionPointerEvents='none'
@@ -343,24 +383,24 @@ export default function FileModal({
                       </Combobox.Target>
 
                       <Combobox.Dropdown>
-                        <Combobox.Options>
-                          {folders
-                            ?.filter((f: { name: string }) =>
-                              f.name.toLowerCase().includes(search.toLowerCase().trim()),
-                            )
-                            .map((f: { name: string; id: string }) => (
-                              <Combobox.Option value={f.id} key={f.id}>
-                                {f.name}
-                              </Combobox.Option>
-                            ))}
+                        {folders?.length === 0 && (
+                          <Combobox.Empty>
+                            You have no folders. Start typing to create a new folder for this file.
+                          </Combobox.Empty>
+                        )}
 
-                          {!folders?.some((f: { name: string }) => f.name === search) &&
-                            search.trim().length > 0 && (
+                        <FolderComboboxOptions
+                          folderOptions={folderOptions}
+                          searchValue={search}
+                          additionalOptions={
+                            !folders?.some((f: { name: string }) => f.name === search) &&
+                            search.trim().length > 0 ? (
                               <Combobox.Option value='$create'>
                                 + Create folder &quot;{search}&quot;
                               </Combobox.Option>
-                            )}
-                        </Combobox.Options>
+                            ) : null
+                          }
+                        />
                       </Combobox.Dropdown>
                     </Combobox>
                   )}
@@ -428,6 +468,70 @@ export default function FileModal({
           <></>
         )}
       </Modal>
+
+      {open && sequenced && fileNavButtons && (
+        <>
+          <ActionButton
+            Icon={IconChevronLeft}
+            tooltip='Previous file'
+            onClick={() => goPrev()}
+            disabled={!hasPrev}
+            hiddenFrom='sm'
+            style={{
+              position: 'fixed',
+              left: '0.75rem',
+              top: 'calc(env(safe-area-inset-top, 0px) + 0.75rem)',
+              zIndex: 1000,
+            }}
+            size='md'
+          />
+
+          <ActionButton
+            Icon={IconChevronRight}
+            tooltip='Next file'
+            onClick={() => goNext()}
+            disabled={!hasNext}
+            hiddenFrom='sm'
+            style={{
+              position: 'fixed',
+              right: '0.75rem',
+              top: 'calc(env(safe-area-inset-top, 0px) + 0.75rem)',
+              zIndex: 1000,
+            }}
+            size='md'
+          />
+
+          <ActionButton
+            Icon={IconChevronLeft}
+            tooltip='Previous file'
+            onClick={() => goPrev()}
+            disabled={!hasPrev}
+            visibleFrom='sm'
+            style={{
+              position: 'fixed',
+              left: '1rem',
+              top: '50%',
+              zIndex: 1000,
+            }}
+            size='lg'
+          />
+
+          <ActionButton
+            Icon={IconChevronRight}
+            tooltip='Next file'
+            onClick={() => goNext()}
+            disabled={!hasNext}
+            visibleFrom='sm'
+            style={{
+              position: 'fixed',
+              right: '1rem',
+              top: '50%',
+              zIndex: 1000,
+            }}
+            size='lg'
+          />
+        </>
+      )}
     </>
   );
 }

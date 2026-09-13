@@ -1,6 +1,35 @@
+import { db } from '@/lib/db';
 import { IntervalTask, WorkerTask } from '..';
+import { files, thumbnails } from '@/lib/db/schema';
+import { and, gt, like, notInArray } from 'drizzle-orm';
 
-export default function thumbnails(prisma: typeof globalThis.__db__) {
+export function runThumbnailWorkers(workers: WorkerTask[], files: string[]) {
+  const thumbToWorker: { id: string; worker: number }[] = [];
+
+  let workerIndex = 0;
+  const unique = new Set(files);
+  for (const file of unique) {
+    thumbToWorker.push({
+      id: file,
+      worker: workerIndex,
+    });
+
+    workerIndex = (workerIndex + 1) % workers.length;
+  }
+
+  const ids = workers.map((_, i) => thumbToWorker.filter((x) => x.worker === i).map((x) => x.id));
+
+  for (let i = 0; i !== workers.length; ++i) {
+    if (!ids[i].length) continue;
+
+    workers[i].worker!.postMessage({
+      type: 0,
+      data: ids[i],
+    });
+  }
+}
+
+export default function thumbnailsTask() {
   return async function (this: IntervalTask, rerun = false) {
     const thumbnailWorkers = this.tasks.tasks.filter(
       (x) => 'worker' in x && x.id.startsWith('thumbnail'),
@@ -10,40 +39,24 @@ export default function thumbnails(prisma: typeof globalThis.__db__) {
 
     if (rerun) this.logger.debug('regenerating thumbnails for all videos');
 
-    const thumbnailNeeded = await prisma.file.findMany({
-      where: {
-        ...(rerun ? {} : { thumbnail: { is: null } }),
-
-        type: {
-          startsWith: 'video/',
-        },
-      },
-    });
-    if (!thumbnailNeeded.length) return;
+    const thumbnailNeeded = await db
+      .select({ id: files.id })
+      .from(files)
+      .where(
+        and(
+          like(files.type, 'video/%'),
+          gt(files.size, 0),
+          !rerun
+            ? notInArray(files.id, db.select({ fileId: thumbnails.fileId }).from(thumbnails))
+            : undefined,
+        ),
+      );
 
     this.logger.debug(`found ${thumbnailNeeded.length} files that need thumbnails`);
 
-    const thumbToWorker: { id: string; worker: number }[] = [];
-
-    let workerIndex = 0;
-    for (const file of thumbnailNeeded) {
-      thumbToWorker.push({
-        id: file.id,
-        worker: workerIndex,
-      });
-
-      workerIndex = (workerIndex + 1) % thumbnailWorkers.length;
-    }
-
-    const ids = thumbnailWorkers.map((_, i) => thumbToWorker.filter((x) => x.worker === i).map((x) => x.id));
-
-    for (let i = 0; i !== thumbnailWorkers.length; ++i) {
-      if (!ids[i].length) continue;
-
-      thumbnailWorkers[i].worker!.postMessage({
-        type: 0,
-        data: ids[i],
-      });
-    }
+    runThumbnailWorkers(
+      thumbnailWorkers,
+      thumbnailNeeded.map((x) => x.id),
+    );
   };
 }

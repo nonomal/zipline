@@ -1,100 +1,47 @@
 import { log } from '@/lib/logger';
-import { PrismaPg } from '@prisma/adapter-pg';
-import { type Prisma, PrismaClient } from '@/prisma/client';
-import { metadataSchema } from './models/incompleteFile';
-import { metricDataSchema } from './models/metric';
-import { userViewSchema } from './models/user';
-import { readDbVars, REQUIRED_DB_VARS } from '../config/read/env';
+import { drizzle, type NodePgQueryResultHKT } from 'drizzle-orm/node-postgres';
+import type { PgAsyncDatabase, PgAsyncTransaction } from 'drizzle-orm/pg-core';
+import { drizzle as drizzlePglite, type PgliteQueryResultHKT } from 'drizzle-orm/pglite';
+import { getDatabaseUrl, getPgliteDir } from './connection';
+import { relations } from './relations';
 
 const building = !!process.env.ZIPLINE_BUILD;
+const logger = log('db');
 
-let prisma: ExtendedPrismaClient;
+type QueryResult = NodePgQueryResultHKT | PgliteQueryResultHKT;
+type Database = PgAsyncDatabase<QueryResult, typeof relations>;
+type Transaction = PgAsyncTransaction<QueryResult, typeof relations>;
+export type DbClient = Database | Transaction;
 
 declare global {
-  var __db__: ExtendedPrismaClient;
+  // eslint-disable-next-line no-var
+  var __db__: Database | undefined;
 }
 
-if (!global.__db__) {
-  if (!building) global.__db__ = getClient();
-}
+function queryLogger() {
+  if (!process.env.ZIPLINE_DB_LOG) return undefined;
 
-// eslint-disable-next-line prefer-const
-prisma = global.__db__;
-
-type ExtendedPrismaClient = ReturnType<typeof getClient>;
-
-function parseDbLog(env: string): Prisma.LogLevel[] {
-  if (env === 'true') return ['query'];
-
-  return env
-    .split(',')
-    .map((v) => v.trim())
-    .filter((v) => v) as unknown as Prisma.LogLevel[];
-}
-
-function pgConnectionString() {
-  const vars = readDbVars();
-  if (vars.DATABASE_URL) return vars.DATABASE_URL;
-
-  return `postgresql://${vars.DATABASE_USERNAME}:${vars.DATABASE_PASSWORD}@${vars.DATABASE_HOST}:${vars.DATABASE_PORT}/${vars.DATABASE_NAME}`;
-}
-
-function getClient() {
-  const logger = log('db');
-
-  const connectionString = pgConnectionString();
-  if (!connectionString) {
-    logger.error(`either DATABASE_URL or all of [${REQUIRED_DB_VARS.join(', ')}] not set, exiting...`);
-    process.exit(1);
-  }
-
-  process.env.DATABASE_URL = connectionString;
-
-  logger.info('connecting to database', { url: connectionString });
-
-  const adapter = new PrismaPg({ connectionString });
-  const client = new PrismaClient({
-    adapter,
-    log: process.env.ZIPLINE_DB_LOG ? parseDbLog(process.env.ZIPLINE_DB_LOG) : undefined,
-  }).$extends({
-    result: {
-      file: {
-        size: {
-          needs: { size: true },
-          compute({ size }: { size: bigint }) {
-            return Number(size);
-          },
-        },
-      },
-      user: {
-        view: {
-          needs: { view: true },
-          compute({ view }: { view: Prisma.JsonValue }) {
-            return userViewSchema.parse(view);
-          },
-        },
-      },
-      metric: {
-        data: {
-          needs: { data: true },
-          compute({ data }: { data: Prisma.JsonValue }) {
-            return metricDataSchema.parse(data);
-          },
-        },
-      },
-      incompleteFile: {
-        metadata: {
-          needs: { metadata: true },
-          compute({ metadata }: { metadata: Prisma.JsonValue }) {
-            return metadataSchema.parse(metadata);
-          },
-        },
-      },
+  return {
+    logQuery(query: string, params: unknown[]) {
+      logger.debug('query', { query, params });
     },
-  });
-  client.$connect();
-
-  return client;
+  };
 }
 
-export { prisma };
+function createDatabase(): Database {
+  const connectionString = getDatabaseUrl();
+  const directory = getPgliteDir(connectionString);
+  logger.info('connecting to database');
+
+  return directory
+    ? drizzlePglite({ connection: directory, relations, logger: queryLogger() })
+    : drizzle({ connection: connectionString, relations, logger: queryLogger() });
+}
+
+export const db: Database = new Proxy(drizzle.mock({ relations }), {
+  get(mock, property) {
+    const database = building ? mock : (globalThis.__db__ ??= createDatabase());
+    const value = Reflect.get(database, property, database);
+    return typeof value === 'function' ? value.bind(database) : value;
+  },
+});

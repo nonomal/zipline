@@ -1,5 +1,6 @@
+import DomainSelect from '@/components/DomainSelect';
 import { useThemes } from '@/components/ThemeProvider';
-import { useSettingsStore } from '@/lib/store/settings';
+import { useSettingsStore } from '@/lib/client/store/settings';
 import { Group, Paper, Select, Stack, Switch, Text, Title } from '@mantine/core';
 import { IconMoonFilled, IconPaintFilled, IconSunFilled } from '@tabler/icons-react';
 import { useShallow } from 'zustand/shallow';
@@ -33,16 +34,22 @@ export default function SettingsDashboard() {
     <Paper withBorder p='sm' h='100%'>
       <Title order={2}>Dashboard Settings</Title>
       <Text size='sm' c='dimmed' mt={3}>
-        These settings are saved in your browser.
+        These settings are saved automatically in your <b>browser.</b>
       </Text>
 
       <Stack gap='sm' my='xs'>
-        <Group grow>
+        <Stack>
           <Switch
             label='Disable Media Preview'
-            description='Disable previews of files in the dashboard. This is useful to save data as Zipline, by default, will load previews of files.'
+            description='Disable previews of files in the dashboard. This may help to save data and speed up the dashboard if you have a lot of media files, but it will also disable the file viewer and show a generic file icon instead of a preview for supported files.'
             checked={settings.disableMediaPreview}
             onChange={(event) => update('disableMediaPreview', event.currentTarget.checked)}
+          />
+          <Switch
+            label='Mute video and audio previews'
+            description='When enabled, video and audio in the file viewer autoplay muted. Turning this off tries to play sound immediately. Browsers may block unmuted autoplay until you interact with the page.'
+            checked={settings.mediaAutoMuted}
+            onChange={(event) => update('mediaAutoMuted', event.currentTarget.checked)}
           />
           <Switch
             label='Warn on deletion'
@@ -50,7 +57,51 @@ export default function SettingsDashboard() {
             checked={settings.warnDeletion}
             onChange={(event) => update('warnDeletion', event.currentTarget.checked)}
           />
-        </Group>
+          <Switch
+            label='File navigation buttons'
+            description='Show previous/next on the right and left of the file viewer to easily navigate between files.'
+            checked={settings.fileNavButtons}
+            onChange={(event) => update('fileNavButtons', event.currentTarget.checked)}
+          />
+          <Switch
+            label='Show recents'
+            description='Show recent uploads and logins on the home page.'
+            checked={settings.homeShowRecents}
+            onChange={(event) => update('homeShowRecents', event.currentTarget.checked)}
+          />
+
+          <Switch
+            label='Show activity'
+            description='Show your recent activity as a graph on the home page.'
+            checked={settings.homeShowActivity}
+            onChange={(event) => update('homeShowActivity', event.currentTarget.checked)}
+          />
+
+          <Switch
+            label='Show file types'
+            description='Show the file types table on the home page.'
+            checked={settings.homeShowTypes}
+            onChange={(event) => update('homeShowTypes', event.currentTarget.checked)}
+          />
+        </Stack>
+
+        <Select
+          label='File viewer'
+          description='Choose which file viewer opens when you click a file.'
+          data={[
+            { value: 'fullscreen', label: 'Fullscreen (beta)' },
+            { value: 'default', label: 'Default (modal)' },
+          ]}
+          value={settings.fileViewer}
+          onChange={(value) => update('fileViewer', (value as 'default' | 'fullscreen') ?? 'fullscreen')}
+        />
+
+        <DomainSelect
+          label='Default Domain'
+          description='Set the default domain used for copied links anywhere in the dashboard. Leave blank or select "Default domain" to use the current domain that serves the dashboard.'
+          value={settings.domain}
+          onChange={(value) => update('domain', (value as string) ?? '')}
+        />
 
         <Select
           label='Theme'

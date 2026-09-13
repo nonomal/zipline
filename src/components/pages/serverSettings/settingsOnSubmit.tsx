@@ -1,5 +1,3 @@
-import React from 'react';
-
 import { Response } from '@/lib/api/response';
 import { fetchApi } from '@/lib/fetchApi';
 import { showNotification } from '@mantine/notifications';
@@ -7,6 +5,22 @@ import { mutate } from 'swr';
 import { IconDeviceFloppy } from '@tabler/icons-react';
 import { useForm } from '@mantine/form';
 import { NavigateFunction } from 'react-router-dom';
+
+export function checkCommaArray(value: unknown): string[] {
+  if (!value) return [];
+
+  if (value && typeof value === 'string' && value.trim() === '') return [];
+
+  if (!Array.isArray(value) && typeof value === 'string')
+    return value
+      .split(',')
+      .map((x) => x.trim())
+      .filter((x) => x !== '');
+
+  if (Array.isArray(value)) return value.map((x) => String(x).trim()).filter((x) => x !== '');
+
+  return [];
+}
 
 export function settingsOnSubmit(navigate: NavigateFunction, form: ReturnType<typeof useForm<any>>) {
   return async (values: unknown) => {
@@ -32,6 +46,8 @@ export function settingsOnSubmit(navigate: NavigateFunction, form: ReturnType<ty
           }
         }
       }
+
+      return error;
     } else {
       showNotification({
         message: 'Settings saved',
@@ -42,7 +58,7 @@ export function settingsOnSubmit(navigate: NavigateFunction, form: ReturnType<ty
       mutate('/api/server/settings', data);
       mutate('/api/server/settings/web');
       mutate('/api/server/public');
-      navigate('/dashboard/admin/settings', { replace: true });
+      navigate(window.location.pathname, { replace: true });
     }
   };
 }

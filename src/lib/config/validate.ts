@@ -1,21 +1,67 @@
-import { tmpdir } from 'os';
-import { join, resolve } from 'path';
+import { resolve } from 'path';
 import { z } from 'zod';
 import { log } from '../logger';
 import { ParsedConfig } from './read';
 import { PROP_TO_ENV } from './read/env';
 import { checkOutput, COMPRESS_TYPES } from '../compress';
+import ms, { StringValue } from 'ms';
 
 declare global {
-  // eslint-disable-next-line @typescript-eslint/no-namespace
+  // oxlint-disable-next-line typescript/no-namespace
   namespace NodeJS {
     interface ProcessEnv {
+      // if running a build, dont connect db
       ZIPLINE_BUILD?: string;
+
+      // run with extra database query logs
       ZIPLINE_DB_LOG?: string;
+
+      // enables worker threads to log inits
       ZIPLINE_OVERRIDE_DISABLED_WORKER_LOG?: string;
+
+      // overrides the log date format
+      ZIPLINE_OVERRIDE_LOG_DATE_FORMAT?: string;
+
+      // outputs a file with memory usage every x seconds, see docs for more info
+      ZIPLINE_MONITOR_MEMORY?: string;
+
+      // removes log color
+      ZIPLINE_NO_COLOR?: string;
+
+      // generate openapi.json and exit
+      ZIPLINE_OUTPUT_OPENAPI?: string;
+
+      // current git sha, for version checking (will fallback to git command)
+      ZIPLINE_GIT_SHA?: string;
+
+      // github token (optional) for version checking
+      ZIPLINE_GITHUB_TOKEN?: string;
+
+      // provide custom ffmpeg path if not in PATH
+      FFMPEG_PATH?: string;
+
+      // output debug logs, syntax: DEBUG=comma,separated
+      DEBUG?: string;
     }
   }
 }
+
+export const MIME_REGEX = /^[a-zA-Z0-9!#$&^_\-+.]+\/[a-zA-Z0-9!#$&^_\-+.]+$/i;
+
+export const MAX_SAFE_TIMEOUT_MS = 2147483647;
+
+export function validateInterval(value: string): boolean {
+  const intervalMs = ms(value as StringValue);
+  if (typeof intervalMs !== 'number') return false;
+
+  return intervalMs <= MAX_SAFE_TIMEOUT_MS;
+}
+
+const intervalSchema = (defaultValue: string) =>
+  z
+    .string()
+    .default(defaultValue)
+    .refine(validateInterval, `Value must be less than or equal to ${MAX_SAFE_TIMEOUT_MS}ms`);
 
 export const discordContent = z
   .object({
@@ -72,7 +118,7 @@ export const schema = z.object({
     tempDirectory: z
       .string()
       .transform((s) => resolve(s))
-      .default(join(tmpdir(), 'zipline')),
+      .default(resolve('./uploads/.tmp')),
     trustProxy: z.boolean().default(false),
 
     databaseUrl: z.url(),
@@ -104,16 +150,19 @@ export const schema = z.object({
     enabled: z.boolean().default(true),
   }),
   tasks: z.object({
-    deleteInterval: z.string().default('30min'),
-    clearInvitesInterval: z.string().default('30min'),
-    maxViewsInterval: z.string().default('30min'),
-    thumbnailsInterval: z.string().default('30min'),
-    metricsInterval: z.string().default('30min'),
+    deleteInterval: intervalSchema('30min'),
+    clearInvitesInterval: intervalSchema('30min'),
+    maxViewsInterval: intervalSchema('30min'),
+    thumbnailsInterval: intervalSchema('30min'),
+    metricsInterval: intervalSchema('30min'),
+    cleanThumbnailsInterval: intervalSchema('1d'),
   }),
   files: z.object({
     route: z.string().startsWith('/').min(1).trim().toLowerCase().default('/u'),
     length: z.number().default(6),
     defaultFormat: z.enum(['random', 'date', 'uuid', 'name', 'gfycat', 'random-words']).default('random'),
+    disabledTypes: z.array(z.string().regex(MIME_REGEX, 'Invalid MIME type format')).default([]),
+    disabledTypesDefault: z.string().nullable().default(null),
     disabledExtensions: z.array(z.string()).default([]),
     maxFileSize: z.string().default('100mb'),
     defaultExpiration: z.string().nullable().default(null),
@@ -127,6 +176,8 @@ export const schema = z.object({
       .enum(COMPRESS_TYPES)
       .default('jpg')
       .refine((v) => checkOutput(v), 'System does not support outputting this image format.'),
+    maxFilesPerUpload: z.number().max(2147483647).min(1).default(1000),
+    extensionlessUrls: z.boolean().default(false),
   }),
   urls: z.object({
     route: z.string().startsWith('/').min(1).trim().toLowerCase().default('/go'),
@@ -186,6 +237,7 @@ export const schema = z.object({
       enabled: z.boolean().default(true),
       num_threads: z.number().default(4),
       format: z.enum(['jpg', 'png', 'webp']).default('jpg'),
+      instantaneous: z.boolean().default(false),
     }),
     metrics: z.object({
       enabled: z.boolean().default(true),
@@ -193,7 +245,6 @@ export const schema = z.object({
       showUserSpecific: z.boolean().default(true),
     }),
     versionChecking: z.boolean().default(true),
-    versionAPI: z.url().default('https://zipline-version.diced.sh/'),
   }),
   domains: z.array(z.string()).default([]),
   invites: z.object({
@@ -244,7 +295,29 @@ export const schema = z.object({
       enabled: z.boolean().default(false),
       issuer: z.string().default('Zipline'),
     }),
-    passkeys: z.boolean().default(true),
+    passkeys: z.object({
+      enabled: z.boolean().default(false),
+      rpID: z
+        .string()
+        .trim()
+        .refine(
+          (v) => v.length === 0 || /^[a-zA-Z0-9.-]+$/.test(v),
+          'RP ID can only contain letters, numbers, dots, and hyphens. Example: example.com, localhost, zipline.example.com.',
+        )
+        .transform((v) => (v.length > 0 ? v : null))
+        .nullable()
+        .default(null),
+      origin: z
+        .string()
+        .trim()
+        .refine(
+          (v) => v.length === 0 || /^https?:\/\/[a-zA-Z0-9.-]+(:\d+)?(\/.*)?$/.test(v),
+          'Origin must be a valid URL starting with http:// or https://',
+        )
+        .transform((v) => (v.length > 0 ? v : null))
+        .nullable()
+        .default(null),
+    }),
   }),
   oauth: z.object({
     bypassLocalLogin: z.boolean().default(false),
@@ -259,11 +332,11 @@ export const schema = z.object({
       })
       .or(
         z.object({
-          clientId: z.undefined(),
-          clientSecret: z.undefined(),
-          redirectUri: z.undefined(),
-          allowedIds: z.undefined().or(z.array(z.string()).default([])),
-          deniedIds: z.undefined().or(z.array(z.string()).default([])),
+          clientId: z.undefined().optional(),
+          clientSecret: z.undefined().optional(),
+          redirectUri: z.undefined().optional(),
+          allowedIds: z.undefined().optional().or(z.array(z.string()).default([])),
+          deniedIds: z.undefined().optional().or(z.array(z.string()).default([])),
         }),
       ),
     github: z
@@ -274,9 +347,9 @@ export const schema = z.object({
       })
       .or(
         z.object({
-          clientId: z.undefined(),
-          clientSecret: z.undefined(),
-          redirectUri: z.undefined(),
+          clientId: z.undefined().optional(),
+          clientSecret: z.undefined().optional(),
+          redirectUri: z.undefined().optional(),
         }),
       ),
     google: z
@@ -287,9 +360,9 @@ export const schema = z.object({
       })
       .or(
         z.object({
-          clientId: z.undefined(),
-          clientSecret: z.undefined(),
-          redirectUri: z.undefined(),
+          clientId: z.undefined().optional(),
+          clientSecret: z.undefined().optional(),
+          redirectUri: z.undefined().optional(),
         }),
       ),
     oidc: z
@@ -303,12 +376,12 @@ export const schema = z.object({
       })
       .or(
         z.object({
-          clientId: z.undefined(),
-          clientSecret: z.undefined(),
-          authorizeUrl: z.undefined(),
-          userinfoUrl: z.undefined(),
-          tokenUrl: z.undefined(),
-          redirectUri: z.undefined(),
+          clientId: z.undefined().optional(),
+          clientSecret: z.undefined().optional(),
+          authorizeUrl: z.undefined().optional(),
+          userinfoUrl: z.undefined().optional(),
+          tokenUrl: z.undefined().optional(),
+          redirectUri: z.undefined().optional(),
         }),
       ),
   }),
@@ -336,18 +409,6 @@ export const schema = z.object({
   httpWebhook: z.object({
     onUpload: z.url().nullable().default(null),
     onShorten: z.url().nullable().default(null),
-  }),
-  ssl: z.object({
-    key: z
-      .string()
-      .transform((s) => resolve(s))
-      .nullable()
-      .default(null),
-    cert: z
-      .string()
-      .transform((s) => resolve(s))
-      .nullable()
-      .default(null),
   }),
   pwa: z.object({
     enabled: z.boolean().default(true),

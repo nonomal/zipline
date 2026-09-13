@@ -1,29 +1,42 @@
+import { ApiError } from '@/lib/api/errors';
 import { config } from '@/lib/config';
-import { createToken, decrypt } from '@/lib/crypto';
-import { prisma } from '@/lib/db';
+import { createToken } from '@/lib/crypto';
+import { db } from '@/lib/db';
+import { type OAuthProviderType } from '@/lib/db/enums';
+import { createUser, getUser, getUserBySession, type User } from '@/lib/db/models/user';
+import { oauthProviders, users } from '@/lib/db/schema';
+import { isPostgresError } from '@/lib/db/utils';
 import Logger, { log } from '@/lib/logger';
-import { findProvider } from '@/lib/oauth/providerUtil';
-import { OAuthProviderType, User } from '@/prisma/client';
+import { findProvider } from '@/lib/oauth/providers';
+import { parseOAuthState } from '@/lib/oauth/state';
+import { and, eq } from 'drizzle-orm';
 import { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import fastifyPlugin from 'fastify-plugin';
-import { getSession, saveSession } from '../session';
+import { getSession, saveSession, ZiplineIronSession } from '../session';
 
-export interface OAuthQuery {
+export type OAuthQuery = {
   state?: string;
   code: string;
   host: string;
-}
+  session: ZiplineIronSession;
+};
 
-export interface OAuthResponse {
-  username?: string;
-  user_id?: string;
-  access_token?: string;
-  refresh_token?: string;
+export type OAuthResponse = {
+  username: string;
+  user_id: string;
+  access_token: string;
+  refresh_token?: string | null;
   avatar?: string | null;
+};
 
-  error?: string;
-  error_code?: number;
-  redirect?: string;
+function safeOAuthResponse(response: OAuthResponse) {
+  return {
+    ...response,
+    access_token: '[redacted]',
+    ...(response.refresh_token !== undefined && {
+      refresh_token: response.refresh_token ? '[redacted]' : response.refresh_token,
+    }),
+  };
 }
 
 async function oauthPlugin(fastify: FastifyInstance) {
@@ -36,74 +49,57 @@ async function oauthPlugin(fastify: FastifyInstance) {
     handler: (query: OAuthQuery, logger: Logger) => Promise<OAuthResponse>,
   ) {
     const logger = log('api').c('auth').c('oauth').c(provider.toLowerCase());
-
-    (this.query as any).host = this.headers.host ?? 'localhost:3000';
-
-    const response = await handler(this.query as OAuthQuery, logger);
     const session = await getSession(this, reply);
 
-    if (response.error) {
-      logger.warn('invalid oauth request', {
-        error: response.error,
-      });
+    const q = this.query as { state?: string; code?: string };
+    const query: OAuthQuery = {
+      state: q.state,
+      code: q.code ?? '',
+      host: this.headers.host ?? 'localhost:3000',
+      session,
+    };
 
-      return reply.internalServerError(response.error);
-    }
-
-    if (response.redirect) {
-      return reply.redirect(response.redirect);
-    }
+    const response = await handler(query, logger);
 
     logger.debug('oauth response', {
-      response,
+      response: safeOAuthResponse(response),
     });
 
-    const existingOauth = await prisma.oAuthProvider.findUnique({
-      where: {
-        provider_oauthId: {
-          provider: provider,
-          oauthId: response.user_id!,
-        },
-      },
-    });
+    const [existingOauth] = await db
+      .select({ id: oauthProviders.id, userId: oauthProviders.userId })
+      .from(oauthProviders)
+      .where(and(eq(oauthProviders.provider, provider), eq(oauthProviders.oauthId, response.user_id)))
+      .limit(1);
 
-    const existingUser = await prisma.user.findFirst({
-      where: {
-        username: response.username!,
-      },
-      select: {
-        id: true,
-        username: true,
-      },
-    });
+    const [existingUser] = await db
+      .select({ id: users.id })
+      .from(users)
+      .where(eq(users.username, response.username))
+      .limit(1);
 
-    const { state } = this.query as OAuthQuery;
+    const state = parseOAuthState(query.state);
+    if (!state) throw new ApiError(1064);
 
-    const user = await prisma.user.findFirst({
-      where: {
-        sessions: {
-          has: session.sessionId ?? '',
-        },
-      },
-      include: {
-        oauthProviders: true,
-      },
-    });
+    if (!state.nonce || !session.oauthState || state.nonce !== session.oauthState) {
+      logger.warn('oauth state nonce mismatch!!', {
+        provider,
+        ua: this.headers['user-agent'],
+      });
 
-    const userOauth = findProvider(provider, user?.oauthProviders ?? []);
-
-    let urlState;
-    try {
-      urlState = decrypt(decodeURIComponent(state ?? ''), config.core.secret);
-    } catch {
-      urlState = null;
+      throw new ApiError(1064);
     }
 
-    if (urlState === 'link') {
-      if (!user) return reply.unauthorized('invalid session');
+    delete session.oauthState;
+    await session.save();
 
-      if (findProvider(provider, user.oauthProviders))
-        return reply.badRequest('This account is already linked to this provider');
+    let user: User | null = null;
+    if (session.sessionId) user = await getUserBySession(session.sessionId);
+    const userOauth = findProvider(provider, user?.oauthProviders ?? []);
+
+    if (state.mode === 'link') {
+      if (!user) throw new ApiError(2000);
+
+      if (findProvider(provider, user.oauthProviders)) throw new ApiError(1063);
 
       logger.debug('attempting to link oauth account', {
         provider,
@@ -111,24 +107,20 @@ async function oauthPlugin(fastify: FastifyInstance) {
       });
 
       try {
-        await prisma.user.update({
-          where: {
-            id: user.id,
-          },
-          data: {
-            oauthProviders: {
-              create: {
-                provider: provider,
-                accessToken: response.access_token!,
-                refreshToken: response.refresh_token!,
-                username: response.username!,
-                oauthId: response.user_id!,
-              },
-            },
-          },
-        });
+        const [createdProvider] = await db
+          .insert(oauthProviders)
+          .values({
+            userId: user.id,
+            provider,
+            accessToken: response.access_token,
+            refreshToken: response.refresh_token,
+            username: response.username,
+            oauthId: response.user_id,
+          })
+          .returning({ id: oauthProviders.id });
+        if (!createdProvider) throw new ApiError(9005);
 
-        await saveSession(session, user);
+        await saveSession(session, user, false);
 
         logger.info('linked oauth account', {
           provider,
@@ -143,20 +135,21 @@ async function oauthPlugin(fastify: FastifyInstance) {
           error: e,
         });
 
-        return reply.badRequest('Cant link account, already linked with this provider');
+        if (e instanceof ApiError && e.code === 9005) throw e;
+        throw new ApiError(1063);
       }
     } else if (user && userOauth) {
-      await prisma.oAuthProvider.update({
-        where: {
-          id: userOauth.id,
-        },
-        data: {
-          accessToken: response.access_token!,
-          refreshToken: response.refresh_token!,
-          username: response.username!,
-          oauthId: response.user_id!,
-        },
-      });
+      const [updated] = await db
+        .update(oauthProviders)
+        .set({
+          accessToken: response.access_token,
+          refreshToken: response.refresh_token,
+          username: response.username,
+          oauthId: response.user_id,
+        })
+        .where(eq(oauthProviders.id, userOauth.id))
+        .returning({ id: oauthProviders.id });
+      if (!updated) throw new ApiError(9005);
 
       await saveSession(session, user, false);
 
@@ -167,26 +160,30 @@ async function oauthPlugin(fastify: FastifyInstance) {
 
       return reply.redirect('/dashboard');
     } else if (existingOauth) {
-      const login = await prisma.oAuthProvider.update({
-        where: {
-          id: existingOauth.id,
-        },
-        data: {
-          accessToken: response.access_token!,
-          refreshToken: response.refresh_token!,
-          username: response.username!,
-          oauthId: response.user_id!,
-        },
-        include: {
-          user: true,
-        },
-      });
+      const loginUser = await db.transaction(async (tx) => {
+        const [updated] = await tx
+          .update(oauthProviders)
+          .set({
+            accessToken: response.access_token,
+            refreshToken: response.refresh_token,
+            username: response.username,
+            oauthId: response.user_id,
+          })
+          .where(eq(oauthProviders.id, existingOauth.id))
+          .returning({ id: oauthProviders.id });
+        if (!updated) throw new ApiError(9005);
 
-      await saveSession(session, <User>login.user!, false);
+        return getUser(existingOauth.userId, tx);
+      });
+      if (!loginUser) throw new ApiError(2001);
+
+      if (session?.sessionId) session.destroy();
+
+      await saveSession(session, loginUser, false);
 
       logger.info('logged in with oauth', {
         provider,
-        user: login.user!.id,
+        user: loginUser.id,
       });
 
       return reply.redirect('/dashboard');
@@ -195,30 +192,40 @@ async function oauthPlugin(fastify: FastifyInstance) {
         oauth: response.username || 'unknown',
         ua: this.headers['user-agent'],
       });
-      return reply.badRequest("Can't create users through oauth.");
+
+      throw new ApiError(6009);
     } else if (existingUser) {
-      return reply.badRequest('This username is already taken');
+      throw new ApiError(6010);
     }
 
     try {
-      const nuser = await prisma.user.create({
-        data: {
-          username: response.username!,
-          token: createToken(),
-          oauthProviders: {
-            create: {
-              provider: provider,
-              accessToken: response.access_token!,
-              refreshToken: response.refresh_token!,
-              username: response.username!,
-              oauthId: response.user_id!,
-            },
+      const nuser = await db.transaction(async (tx) => {
+        const created = await createUser(
+          {
+            username: response.username!,
+            token: createToken(),
+            avatar: response.avatar ?? null,
           },
-          avatar: response.avatar ?? null,
-        },
+          tx,
+        );
+
+        const [createdProvider] = await tx
+          .insert(oauthProviders)
+          .values({
+            userId: created.id,
+            provider,
+            accessToken: response.access_token,
+            refreshToken: response.refresh_token,
+            username: response.username,
+            oauthId: response.user_id,
+          })
+          .returning({ id: oauthProviders.id });
+        if (!createdProvider) throw new ApiError(9005);
+
+        return created;
       });
 
-      await saveSession(session, <User>nuser);
+      await saveSession(session, nuser, false);
 
       logger.info('created user with oauth', {
         provider,
@@ -227,18 +234,18 @@ async function oauthPlugin(fastify: FastifyInstance) {
 
       return reply.redirect('/dashboard');
     } catch (e) {
-      if ((e as { code: string }).code === 'P2002') {
-        // already linked can't create, last failsafe lol
+      if (isPostgresError(e, '23505')) {
+        // The unique constraint closes the race between the provider lookup and account creation.
         logger.warn('user tried to create account with oauth, but already linked', {
           oauth: response.username || 'unknown',
           ua: this.headers['user-agent'],
         });
         logger.debug('oauth create error', {
           error: e,
-          response,
+          response: safeOAuthResponse(response),
         });
 
-        return reply.badRequest('Cant create user, already linked with this provider');
+        throw new ApiError(1063);
       } else throw e;
     }
   }

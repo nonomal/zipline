@@ -1,19 +1,25 @@
 import RelativeDate from '@/components/RelativeDate';
 import { Invite } from '@/lib/db/models/invite';
+import { useSettingsStore } from '@/lib/client/store/settings';
 import { ActionIcon, Anchor, Card, Group, Menu, Stack, Text } from '@mantine/core';
-import { IconCopy, IconDots, IconTrashFilled } from '@tabler/icons-react';
-import { copyInviteUrl, deleteInvite } from './actions';
 import { useClipboard } from '@mantine/hooks';
-import { useSettingsStore } from '@/lib/store/settings';
+import { IconCopy, IconDots, IconQrcode, IconTrashFilled } from '@tabler/icons-react';
+import { copyInviteUrl, deleteInvite } from './actions';
 
-export default function InviteCard({ invite }: { invite: Invite }) {
+export default function InviteCard({
+  invite,
+  setQrOpen,
+}: {
+  invite: Invite;
+  setQrOpen: (invite: Invite) => void;
+}) {
   const clipboard = useClipboard();
 
   const warnDeletion = useSettingsStore((state) => state.settings.warnDeletion);
 
   return (
     <>
-      <Card withBorder shadow='sm' radius='sm'>
+      <Card withBorder shadow='sm'>
         <Card.Section withBorder inheritPadding py='xs'>
           <Group justify='space-between'>
             <Anchor href={`/invite/${invite.code}`} target='_blank' fw={400}>
@@ -35,6 +41,9 @@ export default function InviteCard({ invite }: { invite: Invite }) {
                   onClick={() => copyInviteUrl(invite, clipboard)}
                 >
                   Copy URL
+                </Menu.Item>
+                <Menu.Item leftSection={<IconQrcode size='1rem' />} onClick={() => setQrOpen(invite)}>
+                  Show QR Code
                 </Menu.Item>
                 <Menu.Item
                   leftSection={<IconTrashFilled size='1rem' />}

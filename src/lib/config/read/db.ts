@@ -1,6 +1,4 @@
-import { prisma } from '@/lib/db';
-import { tmpdir } from 'os';
-import { join } from 'path';
+import { ensureSettings } from '@/lib/db/models/zipline';
 
 export const DATABASE_TO_PROP = {
   coreReturnHttpsUrls: 'core.returnHttpsUrls',
@@ -17,10 +15,13 @@ export const DATABASE_TO_PROP = {
   tasksMaxViewsInterval: 'tasks.maxViewsInterval',
   tasksThumbnailsInterval: 'tasks.thumbnailsInterval',
   tasksMetricsInterval: 'tasks.metricsInterval',
+  tasksCleanThumbnailsInterval: 'tasks.cleanThumbnailsInterval',
 
   filesRoute: 'files.route',
   filesLength: 'files.length',
   filesDefaultFormat: 'files.defaultFormat',
+  filesDisabledTypes: 'files.disabledTypes',
+  filesDisabledTypesDefault: 'files.disabledTypesDefault',
   filesDisabledExtensions: 'files.disabledExtensions',
   filesMaxFileSize: 'files.maxFileSize',
   filesDefaultExpiration: 'files.defaultExpiration',
@@ -31,6 +32,8 @@ export const DATABASE_TO_PROP = {
   filesRandomWordsNumAdjectives: 'files.randomWordsNumAdjectives',
   filesRandomWordsSeparator: 'files.randomWordsSeparator',
   filesDefaultCompressionFormat: 'files.defaultCompressionFormat',
+  filesMaxFilesPerUpload: 'files.maxFilesPerUpload',
+  filesExtensionlessUrls: 'files.extensionlessUrls',
 
   urlsRoute: 'urls.route',
   urlsLength: 'urls.length',
@@ -45,13 +48,13 @@ export const DATABASE_TO_PROP = {
   featuresThumbnailsEnabled: 'features.thumbnails.enabled',
   featuresThumbnailsNumberThreads: 'features.thumbnails.num_threads',
   featuresThumbnailsFormat: 'features.thumbnails.format',
+  featuresThumbnailsInstantaneous: 'features.thumbnails.instantaneous',
 
   featuresMetricsEnabled: 'features.metrics.enabled',
   featuresMetricsAdminOnly: 'features.metrics.adminOnly',
   featuresMetricsShowUserSpecific: 'features.metrics.showUserSpecific',
 
   featuresVersionChecking: 'features.versionChecking',
-  featuresVersionAPI: 'features.versionAPI',
 
   invitesEnabled: 'invites.enabled',
   invitesLength: 'invites.length',
@@ -96,7 +99,9 @@ export const DATABASE_TO_PROP = {
 
   mfaTotpEnabled: 'mfa.totp.enabled',
   mfaTotpIssuer: 'mfa.totp.issuer',
-  mfaPasskeys: 'mfa.passkeys',
+  mfaPasskeysEnabled: 'mfa.passkeys.enabled',
+  mfaPasskeysRpID: 'mfa.passkeys.rpID',
+  mfaPasskeysOrigin: 'mfa.passkeys.origin',
 
   ratelimitEnabled: 'ratelimit.enabled',
   ratelimitMax: 'ratelimit.max',
@@ -134,28 +139,5 @@ export const DATABASE_TO_PROP = {
 export type DatabaseToPropKey = keyof typeof DATABASE_TO_PROP;
 
 export async function readDatabaseSettings() {
-  let ziplineTable = await prisma.zipline.findFirst({
-    omit: {
-      createdAt: true,
-      updatedAt: true,
-      id: true,
-      firstSetup: true,
-    },
-  });
-
-  if (!ziplineTable) {
-    ziplineTable = await prisma.zipline.create({
-      data: {
-        coreTempDirectory: join(tmpdir(), 'zipline'),
-      },
-      omit: {
-        createdAt: true,
-        updatedAt: true,
-        id: true,
-        firstSetup: true,
-      },
-    });
-  }
-
-  return ziplineTable;
+  return ensureSettings();
 }

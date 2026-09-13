@@ -1,7 +1,10 @@
+import { verifyAccessToken } from '@/lib/accessToken';
+import { ApiError } from '@/lib/api/errors';
 import { config } from '@/lib/config';
-import { verifyPassword } from '@/lib/crypto';
-import { prisma } from '@/lib/db';
+import { db } from '@/lib/db';
+import { urls } from '@/lib/db/schema';
 import { log } from '@/lib/logger';
+import { eq, or, sql } from 'drizzle-orm';
 import { FastifyReply, FastifyRequest } from 'fastify';
 
 type Params = {
@@ -9,7 +12,7 @@ type Params = {
 };
 
 type Query = {
-  pw?: string;
+  token?: string;
 };
 
 const logger = log('server').c('urls');
@@ -19,23 +22,19 @@ export async function urlsRoute(
   res: FastifyReply,
 ) {
   const { id } = req.params;
-  const { pw } = req.query;
+  const { token } = req.query;
 
-  const url = await prisma.url.findFirst({
-    where: {
-      OR: [{ code: id }, { vanity: id }, { id }],
-    },
-  });
+  const [url] = await db
+    .select()
+    .from(urls)
+    .where(or(eq(urls.code, id), eq(urls.vanity, id), eq(urls.id, id)))
+    .limit(1);
   if (!url) return res.callNotFound();
   if (!url.enabled) return res.callNotFound();
 
   if (url.maxViews && url.views >= url.maxViews) {
     if (config.features.deleteOnMaxViews) {
-      await prisma.url.delete({
-        where: {
-          id: url.id,
-        },
-      });
+      await db.delete(urls).where(eq(urls.id, url.id));
 
       logger.info(`${url.code} deleted due to reaching max views`, {
         id: url.id,
@@ -48,22 +47,16 @@ export async function urlsRoute(
   }
 
   if (url.password) {
-    if (!pw) return res.redirect(`/view/url/${url.id}`);
-    const verified = await verifyPassword(pw as string, url.password);
-
-    if (!verified) return res.redirect(`/view/url/${url.id}`);
+    const valid = verifyAccessToken(token, 'url', url.id);
+    if (!valid) return res.redirect(`/view/url/${url.id}`);
   }
 
-  await prisma.url.update({
-    where: {
-      id: url.id,
-    },
-    data: {
-      views: {
-        increment: 1,
-      },
-    },
-  });
+  const [updated] = await db
+    .update(urls)
+    .set({ views: sql`${urls.views} + 1` })
+    .where(eq(urls.id, url.id))
+    .returning({ id: urls.id });
+  if (!updated) throw new ApiError(9002);
 
   return res.redirect(url.destination);
 }

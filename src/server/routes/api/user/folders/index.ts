@@ -1,129 +1,129 @@
-import { prisma } from '@/lib/db';
-import { fileSelect } from '@/lib/db/models/file';
-import { Folder, cleanFolder, cleanFolders } from '@/lib/db/models/folder';
+import { ApiError } from '@/lib/api/errors';
+import { getFilesWithUser } from '@/lib/db/models/file';
+import {
+  createFolder,
+  getFolderMetadata,
+  Folder,
+  formatFolder,
+  folderSchema,
+  listFolders,
+} from '@/lib/db/models/folder';
+import { getUserIdentity } from '@/lib/db/models/user';
 import { log } from '@/lib/logger';
 import { secondlyRatelimit } from '@/lib/ratelimits';
 import { canInteract } from '@/lib/role';
+import { zQsBoolean } from '@/lib/validation';
 import { userMiddleware } from '@/server/middleware/user';
-import fastifyPlugin from 'fastify-plugin';
+import typedPlugin from '@/server/typedPlugin';
+import z from 'zod';
 
 export type ApiUserFoldersResponse = Folder | Folder[];
-
-type Body = {
-  files?: string[];
-
-  name?: string;
-  isPublic?: boolean;
-};
-
-type Query = {
-  noincl?: boolean;
-  user?: string;
-};
 
 const logger = log('api').c('user').c('folders');
 
 export const PATH = '/api/user/folders';
-export default fastifyPlugin(
-  (server, _, done) => {
-    server.get<{ Querystring: Query }>(PATH, { preHandler: [userMiddleware] }, async (req, res) => {
-      const { noincl, user } = req.query;
-
-      if (user) {
-        const user = await prisma.user.findUnique({
-          where: {
-            id: req.user.id,
+export default typedPlugin(
+  async (server) => {
+    server.get(
+      PATH,
+      {
+        schema: {
+          description:
+            'List folders for the authenticated user, optionally including files or filtering by parent/root.',
+          querystring: z.object({
+            noincl: zQsBoolean.optional(),
+            user: z.string().optional(),
+            parentId: z.string().optional(),
+            root: zQsBoolean.optional(),
+          }),
+          response: {
+            200: z.array(folderSchema),
           },
+          tags: ['auth'],
+        },
+        preHandler: [userMiddleware],
+      },
+      async (req, res) => {
+        const { noincl, user: userId, parentId, root } = req.query;
+
+        if (userId) {
+          const targetUser = await getUserIdentity(userId);
+
+          if (!targetUser) throw new ApiError(4009);
+          if (req.user.id !== targetUser.id && !canInteract(req.user.role, targetUser.role))
+            throw new ApiError(4009);
+        }
+
+        const folders = await listFolders(userId || req.user.id, {
+          root,
+          parentId,
+          includeFiles: !noincl,
         });
 
-        if (!user) return res.notFound();
-        if (req.user.id !== user.id) {
-          if (!canInteract(req.user.role, user.role)) return res.notFound();
-        }
-      }
+        return res.send(folders.map((folder) => formatFolder(folder)));
+      },
+    );
 
-      const folders = await prisma.folder.findMany({
-        where: {
-          userId: user || req.user.id,
-        },
-        orderBy: {
-          createdAt: 'desc',
-        },
-        ...(!noincl && {
-          include: {
-            files: {
-              select: {
-                ...fileSelect,
-                password: true,
-              },
-              orderBy: {
-                createdAt: 'desc',
-              },
-            },
-          },
-        }),
-      });
-
-      return res.send(cleanFolders(folders));
-    });
-
-    server.post<{ Body: Body }>(
+    server.post(
       PATH,
-      { preHandler: [userMiddleware], ...secondlyRatelimit(2) },
+      {
+        schema: {
+          description:
+            'Create a new folder for the authenticated user, optionally public and/or seeded with files.',
+          body: z.object({
+            name: z.string().trim().min(1),
+            isPublic: z.boolean().optional(),
+            files: z.array(z.string()).optional(),
+            parentId: z.string().optional(),
+          }),
+          response: {
+            200: folderSchema,
+          },
+          tags: ['auth'],
+        },
+        preHandler: [userMiddleware],
+        ...secondlyRatelimit(2),
+      },
       async (req, res) => {
-        const { name, isPublic } = req.body;
+        const { name, isPublic, parentId } = req.body;
         let files = req.body.files;
-        if (!name) return res.badRequest('Name is required');
+
+        if (parentId) {
+          const parentFolder = await getFolderMetadata(parentId);
+
+          if (!parentFolder) throw new ApiError(4007);
+          if (parentFolder.userId !== req.user.id) throw new ApiError(3003);
+        }
 
         if (files) {
-          const filesAdd = await prisma.file.findMany({
-            where: {
-              id: {
-                in: files,
-              },
-            },
-            select: {
-              id: true,
-            },
-          });
+          const selectedFiles = await getFilesWithUser(files);
+          const ownedFiles = selectedFiles.filter((file) => file.userId === req.user.id);
 
-          if (!filesAdd.length) return res.badRequest('No files found, with given request');
+          if (!ownedFiles.length) throw new ApiError(1026);
 
-          files = filesAdd.map((f) => f.id);
+          files = ownedFiles.map((file) => file.id);
         }
 
-        const folder = await prisma.folder.create({
-          data: {
+        const folder = await createFolder(
+          {
             name,
             userId: req.user.id,
-            ...(files?.length && {
-              files: {
-                connect: files!.map((f) => ({ id: f })),
-              },
-            }),
+            ...(parentId && { parentId }),
             public: isPublic ?? false,
           },
-          include: {
-            files: {
-              select: {
-                ...fileSelect,
-                password: true,
-              },
-            },
-          },
-        });
+          files ?? [],
+        );
 
         logger.info('folder created', {
           folder: folder.name,
           user: req.user.username,
           files: files?.length || undefined,
+          parentId: parentId || undefined,
         });
 
-        return res.send(cleanFolder(folder));
+        return res.send(formatFolder(folder));
       },
     );
-
-    done();
   },
   { name: PATH },
 );

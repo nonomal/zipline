@@ -1,11 +1,10 @@
 import GridTableSwitcher from '@/components/GridTableSwitcher';
-import { Response } from '@/lib/api/response';
 import { readToDataURL } from '@/lib/base64';
-import { User } from '@/lib/db/models/user';
+import { LimitedUser } from '@/lib/db/models/user';
 import { fetchApi } from '@/lib/fetchApi';
 import { canInteract } from '@/lib/role';
-import { useUserStore } from '@/lib/store/user';
-import { useViewStore } from '@/lib/store/view';
+import { useUserStore } from '@/lib/client/store/user';
+import { useViewStore } from '@/lib/client/store/view';
 import {
   ActionIcon,
   Button,
@@ -48,6 +47,9 @@ export default function DashboardUsers() {
       username: (value) => (value.length < 1 ? 'Username is required' : null),
       password: (value) => (value.length < 1 ? 'Password is required' : null),
     },
+    enhanceGetInputProps: ({ field }) => ({
+      name: field,
+    }),
   });
 
   const onSubmit = async (values: typeof form.values) => {
@@ -65,7 +67,7 @@ export default function DashboardUsers() {
       }
     }
 
-    const { data, error } = await fetchApi<Extract<Response['/api/users'], User>>('/api/users', 'POST', {
+    const { data, error } = await fetchApi<LimitedUser>('/api/users', 'POST', {
       username: values.username,
       password: values.password,
       role: values.role ?? 'USER',
@@ -101,6 +103,7 @@ export default function DashboardUsers() {
             <TextInput
               label='Username'
               placeholder='Enter a username...'
+              autoComplete='username'
               {...form.getInputProps('username')}
             />
             <PasswordInput
@@ -140,7 +143,7 @@ export default function DashboardUsers() {
               {...form.getInputProps('role')}
             />
 
-            <Button type='submit' variant='outline' radius='sm' leftSection={<IconUserPlus size='1rem' />}>
+            <Button type='submit' variant='outline' leftSection={<IconUserPlus size='1rem' />}>
               Create
             </Button>
           </Stack>
@@ -150,11 +153,14 @@ export default function DashboardUsers() {
       <Group>
         <Title>Users</Title>
 
-        <Tooltip label='Create a new user'>
-          <ActionIcon variant='outline' onClick={() => setOpen(true)}>
-            <IconUserPlus size='1rem' />
-          </ActionIcon>
-        </Tooltip>
+        <Button
+          variant='outline'
+          size='compact-sm'
+          leftSection={<IconUserPlus size='1rem' />}
+          onClick={() => setOpen(true)}
+        >
+          Create
+        </Button>
 
         <GridTableSwitcher type='users' />
       </Group>

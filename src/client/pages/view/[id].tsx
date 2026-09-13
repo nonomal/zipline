@@ -1,5 +1,7 @@
 import DashboardFileType from '@/components/file/DashboardFileType';
 import TagPill from '@/components/pages/files/tags/TagPill';
+import { useSsrData } from '@/components/ZiplineSSRProvider';
+import { useTitle } from '@/lib/client/hooks/useTitle';
 import { File } from '@/lib/db/models/file';
 import { User } from '@/lib/db/models/user';
 import { parseString } from '@/lib/parser';
@@ -8,7 +10,6 @@ import { formatRootUrl } from '@/lib/url';
 import {
   ActionIcon,
   Anchor,
-  Box,
   Button,
   Center,
   Collapse,
@@ -24,8 +25,7 @@ import { IconDownload, IconExternalLink, IconInfoCircleFilled } from '@tabler/ic
 import * as sanitize from 'isomorphic-dompurify';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useSsrData } from '../../../components/ZiplineSSRProvider';
-import { getFile } from '../../ssr-view/server';
+import type { getFile } from '../../ssr-view/server';
 
 type SsrData = {
   file: Partial<NonNullable<Awaited<ReturnType<typeof getFile>>>>;
@@ -33,29 +33,24 @@ type SsrData = {
   code: boolean;
   user?: Partial<User>;
   host: string;
-  pw?: string | null;
+  token?: string | null;
   metrics?: Awaited<ReturnType<typeof parserMetrics>>;
   filesRoute?: string;
 };
 
 export default function ViewFileId() {
   const data = useSsrData<SsrData>();
-  if (!data) return null;
-
-  const { file, password, code, user, host, metrics, filesRoute, pw } = data;
-
-  // Fix dates that were stringified during SSR
-  if (file?.createdAt) (file as any).createdAt = new Date(file.createdAt);
-  if (file?.updatedAt) (file as any).updatedAt = new Date(file.updatedAt);
-  if (file?.deletesAt) (file as any).deletesAt = new Date(file.deletesAt);
-  if (user?.createdAt) (user as any).createdAt = new Date(user.createdAt);
-  if (user?.updatedAt) (user as any).updatedAt = new Date(user.updatedAt);
-
   const [passwordValue, setPassword] = useState<string>('');
   const [passwordError, setPasswordError] = useState<string>('');
   const [detailsOpen, setDetailsOpen] = useState<boolean>(false);
 
-  return password && !pw ? (
+  useTitle(data?.file.originalName ?? data?.file.name ?? 'View File');
+
+  if (!data) return null;
+
+  const { file, password, code, user, host, metrics, filesRoute, token } = data;
+
+  return password && !token ? (
     <Modal onClose={() => {}} opened={true} withCloseButton={false} centered title='Password required'>
       <form
         onSubmit={async (e) => {
@@ -68,7 +63,8 @@ export default function ViewFileId() {
           });
 
           if (res.ok) {
-            window.location.reload();
+            const json = (await res.json()) as { token: string };
+            window.location.replace(formatRootUrl('/view', file.name!, { token: json.token }));
           } else {
             setPasswordError('Invalid password');
           }
@@ -98,7 +94,7 @@ export default function ViewFileId() {
     <>
       <Paper withBorder style={{ borderTop: 0, borderLeft: 0, borderRight: 0 }}>
         <Group justify='space-between' py={5} px='xs'>
-          <Text c='dimmed'>{file.name}</Text>
+          <Text c='dimmed'>{file.originalName ?? file.name}</Text>
 
           <Group>
             <ActionIcon size='md' variant='outline' onClick={() => setDetailsOpen((o) => !o)}>
@@ -109,7 +105,7 @@ export default function ViewFileId() {
               size='md'
               variant='outline'
               component={Link}
-              to={`/raw/${file.name}?download=true${pw ? `&pw=${pw}` : ''}`}
+              to={formatRootUrl('/raw', file.name!, { download: 'true', token })}
               target='_blank'
             >
               <IconDownload size='1rem' />
@@ -118,7 +114,7 @@ export default function ViewFileId() {
         </Group>
       </Paper>
 
-      <Collapse in={detailsOpen}>
+      <Collapse expanded={detailsOpen}>
         <Paper m='md' p='md' withBorder>
           {user?.view!.content && (
             <Typography>
@@ -131,7 +127,7 @@ export default function ViewFileId() {
                       user: user as User,
                       link: {
                         returned: `${host}${formatRootUrl(filesRoute ?? '/u', file.name!)}`,
-                        raw: `${host}/raw/${file.name}`,
+                        raw: `${host}${formatRootUrl('/raw', file.name!)}`,
                       },
                       ...metrics,
                     }) ?? '',
@@ -147,15 +143,9 @@ export default function ViewFileId() {
         </Paper>
       </Collapse>
 
-      {file.name!.endsWith('.md') || file.name!.endsWith('.tex') ? (
-        <Paper m='md' p='md' withBorder>
-          <DashboardFileType file={file as unknown as File} password={pw} show code={code} />
-        </Paper>
-      ) : (
-        <Box m='sm'>
-          <DashboardFileType file={file as unknown as File} password={pw} show code={code} />
-        </Box>
-      )}
+      <Center m='sm'>
+        <DashboardFileType file={file as unknown as File} token={token} show code={code} fullscreen />
+      </Center>
     </>
   ) : (
     <>
@@ -164,7 +154,7 @@ export default function ViewFileId() {
           <Group justify='space-between' mb='sm'>
             <Group>
               <Text size='lg' fw={700} display='flex'>
-                {file.name}{' '}
+                {file.originalName ?? file.name}{' '}
               </Text>
               {user?.view!.showTags && (
                 <Group gap={4}>
@@ -174,16 +164,22 @@ export default function ViewFileId() {
                 </Group>
               )}
               {user?.view!.showFolder &&
-                file.Folder &&
-                (file.Folder.public ? (
+                file.folder &&
+                (file.folder.public ? (
                   <Tooltip label='View folder'>
-                    <Anchor component={Link} ml='sm' to={`/folder/${file.Folder.id}`}>
-                      {file.Folder.name}
+                    <Anchor
+                      component={Link}
+                      ml='sm'
+                      to={`/folder/${file.folder.id}`}
+                      target='_blank'
+                      reloadDocument
+                    >
+                      {file.folder.name}
                     </Anchor>
                   </Tooltip>
                 ) : (
                   <Text ml='sm' size='sm' c='dimmed'>
-                    {file.Folder.name}
+                    {file.folder.name}
                   </Text>
                 ))}
               {user?.view!.showMimetype && (
@@ -199,7 +195,7 @@ export default function ViewFileId() {
                   size='md'
                   variant='outline'
                   component={Link}
-                  to={`/raw/${file.name}${pw ? `?pw=${pw}` : ''}`}
+                  to={formatRootUrl('/raw', file.name!, { token })}
                   target='_blank'
                 >
                   <IconExternalLink size='1rem' />
@@ -210,7 +206,7 @@ export default function ViewFileId() {
                   size='md'
                   variant='outline'
                   component={Link}
-                  to={`/raw/${file.name}?download=true${pw ? `&pw=${pw}` : ''}`}
+                  to={formatRootUrl('/raw', file.name!, { download: 'true', token })}
                   target='_blank'
                 >
                   <IconDownload size='1rem' />
@@ -219,7 +215,7 @@ export default function ViewFileId() {
             </ActionIcon.Group>
           </Group>
 
-          <DashboardFileType allowZoom file={file as unknown as File} password={pw} show />
+          <DashboardFileType allowZoom file={file as unknown as File} token={token} show />
 
           {user?.view!.content && (
             <Typography>
@@ -232,7 +228,7 @@ export default function ViewFileId() {
                       file: file as unknown as File,
                       link: {
                         returned: `${host}${formatRootUrl(filesRoute ?? '/u', file.name!)}`,
-                        raw: `${host}/raw/${file.name}`,
+                        raw: `${host}${formatRootUrl('/raw', file.name!)}`,
                       },
                       user: user as User,
                       ...metrics,

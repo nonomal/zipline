@@ -1,11 +1,10 @@
 import ViewUserFiles from '@/components/pages/users/ViewUserFiles';
-import { useTitle } from '@/lib/hooks/useTitle';
+import { useTitle } from '@/lib/client/hooks/useTitle';
 import { Params, redirect, useLoaderData } from 'react-router-dom';
 
 export async function loader({ params }: { params: Params<string> }) {
   const res = await fetch('/api/users/' + params.id);
   if (!res.ok) {
-    console.log("can't get user", res.status);
     return redirect('/dashboard/admin/users');
   }
 

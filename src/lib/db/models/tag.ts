@@ -1,31 +1,15 @@
-export type Tag = {
-  id: string;
-  createdAt: Date;
-  updatedAt: Date;
-  name: string;
-  color: string;
-  files?: {
-    id: string;
-  }[];
-};
+import { files, tags } from '@/lib/db/schema';
+import { createSelectSchema } from 'drizzle-orm/zod';
+import { z } from 'zod';
 
-export const tagSelect = {
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-  name: true,
-  color: true,
-  files: {
-    select: {
-      id: true,
-    },
-  },
-};
+export const tagColumns = { userId: false } as const;
 
-export const tagSelectNoFiles = {
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-  name: true,
-  color: true,
-};
+const tagFileSchema = createSelectSchema(files).pick({ id: true });
+
+export const tagSchema = createSelectSchema(tags)
+  .omit({ userId: true })
+  .extend({
+    files: z.array(tagFileSchema).optional(),
+  });
+
+export type Tag = z.infer<typeof tagSchema>;

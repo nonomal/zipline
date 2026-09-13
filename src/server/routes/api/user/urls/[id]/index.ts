@@ -1,53 +1,81 @@
+import { ApiError } from '@/lib/api/errors';
 import { hashPassword } from '@/lib/crypto';
-import { prisma } from '@/lib/db';
-import { Url } from '@/lib/db/models/url';
+import { db } from '@/lib/db';
+import { Url, urlSchema } from '@/lib/db/models/url';
+import { urls } from '@/lib/db/schema';
 import { log } from '@/lib/logger';
+import { zStringTrimmed } from '@/lib/validation';
 import { userMiddleware } from '@/server/middleware/user';
-import fastifyPlugin from 'fastify-plugin';
+import typedPlugin from '@/server/typedPlugin';
+import { and, eq, getColumns } from 'drizzle-orm';
+import z from 'zod';
 
-export type ApiUserUrlsIdResponse = Url;
-
-type Params = {
-  id: string;
-};
+export type ApiUserUrlsIdResponse = Omit<Url, 'password'>;
 
 const logger = log('api').c('user').c('urls').c('[id]');
 
+const paramsSchema = z.object({
+  id: z.string(),
+});
+
+const { password: _password, ...urlColumns } = getColumns(urls);
+
 export const PATH = '/api/user/urls/:id';
-export default fastifyPlugin(
-  (server, _, done) => {
-    server.get<{ Params: Params }>(PATH, { preHandler: [userMiddleware] }, async (req, res) => {
-      const { id } = req.params;
-
-      const url = await prisma.url.findFirst({
-        where: {
-          id: id,
-        },
-        omit: {
-          password: true,
-        },
-      });
-
-      if (!url) return res.notFound();
-      if (url.userId !== req.user.id) return res.forbidden("You don't own this URL");
-
-      return res.send(url);
-    });
-
-    server.patch<{ Body: Partial<Url>; Params: Params }>(
+export default typedPlugin(
+  async (server) => {
+    server.get(
       PATH,
-      { preHandler: [userMiddleware] },
+      {
+        schema: {
+          params: paramsSchema,
+          response: {
+            200: urlSchema.omit({ password: true }),
+          },
+          tags: ['auth'],
+        },
+        preHandler: [userMiddleware],
+      },
       async (req, res) => {
         const { id } = req.params;
 
-        const url = await prisma.url.findFirst({
-          where: {
-            id: id,
-          },
-        });
+        const [url] = await db
+          .select(urlColumns)
+          .from(urls)
+          .where(and(eq(urls.id, id), eq(urls.userId, req.user.id)));
+        if (!url) throw new ApiError(9002);
 
-        if (!url) return res.notFound();
-        if (url.userId !== req.user.id) return res.forbidden();
+        return res.send(url);
+      },
+    );
+
+    server.patch(
+      PATH,
+      {
+        schema: {
+          params: paramsSchema,
+          body: z.object({
+            password: z.string().nullish(),
+            vanity: zStringTrimmed.nullish(),
+            maxViews: z.number().min(0).nullish(),
+            destination: z.httpUrl().optional(),
+            enabled: z.boolean().optional(),
+          }),
+          response: {
+            200: urlSchema.omit({ password: true }),
+          },
+          tags: ['auth'],
+        },
+        preHandler: [userMiddleware],
+      },
+      async (req, res) => {
+        const { id } = req.params;
+
+        const [url] = await db
+          .select(urlColumns)
+          .from(urls)
+          .where(and(eq(urls.id, id), eq(urls.userId, req.user.id)));
+
+        if (!url) throw new ApiError(9002);
 
         let password: string | null | undefined = undefined;
         if (req.body.password !== undefined) {
@@ -56,38 +84,34 @@ export default fastifyPlugin(
           } else if (typeof req.body.password === 'string') {
             password = await hashPassword(req.body.password);
           } else {
-            return res.badRequest('password must be a string');
+            throw new ApiError(1055);
           }
         }
 
         if (req.body.vanity) {
-          const existingUrl = await prisma.url.findFirst({
-            where: {
-              vanity: req.body.vanity,
-            },
-          });
-
-          if (existingUrl) return res.badRequest('vanity already exists');
+          const vanityCount = await db.$count(urls, eq(urls.vanity, req.body.vanity));
+          if (vanityCount > 0) throw new ApiError(1041);
         }
 
-        if (req.body.maxViews !== undefined && req.body.maxViews! < 0)
-          return res.badRequest('maxViews must be >= 0');
+        const changes = {
+          ...(req.body.vanity !== undefined && { vanity: req.body.vanity }),
+          ...(req.body.password !== undefined && { password }),
+          ...(req.body.maxViews !== undefined && { maxViews: req.body.maxViews }),
+          ...(req.body.destination !== undefined && { destination: req.body.destination }),
+          ...(req.body.enabled !== undefined && { enabled: req.body.enabled }),
+        };
 
-        const updatedUrl = await prisma.url.update({
-          where: {
-            id: id,
-          },
-          data: {
-            ...(req.body.vanity !== undefined && { vanity: req.body.vanity }),
-            ...(req.body.password !== undefined && { password }),
-            ...(req.body.maxViews !== undefined && { maxViews: req.body.maxViews }),
-            ...(req.body.destination !== undefined && { destination: req.body.destination }),
-            ...(req.body.enabled !== undefined && { enabled: req.body.enabled }),
-          },
-          omit: {
-            password: true,
-          },
-        });
+        let updatedUrl = url;
+        if (Object.keys(changes).length) {
+          const [updated] = await db
+            .update(urls)
+            .set(changes)
+            .where(and(eq(urls.id, id), eq(urls.userId, req.user.id)))
+            .returning(urlColumns);
+
+          if (!updated) throw new ApiError(9002);
+          updatedUrl = updated;
+        }
 
         logger.info(`${req.user.username} updated URL ${updatedUrl.id}`, {
           updated: Object.keys(req.body),
@@ -97,35 +121,34 @@ export default fastifyPlugin(
       },
     );
 
-    server.delete<{ Params: Params }>(PATH, { preHandler: [userMiddleware] }, async (req, res) => {
-      const { id } = req.params;
-
-      const url = await prisma.url.findFirst({
-        where: {
-          id: id,
-          userId: req.user.id,
+    server.delete(
+      PATH,
+      {
+        schema: {
+          params: paramsSchema,
+          response: {
+            200: urlSchema.omit({ password: true }),
+          },
+          tags: ['auth'],
         },
-      });
+        preHandler: [userMiddleware],
+      },
+      async (req, res) => {
+        const { id } = req.params;
 
-      if (!url) return res.notFound();
+        const [deletedUrl] = await db
+          .delete(urls)
+          .where(and(eq(urls.id, id), eq(urls.userId, req.user.id)))
+          .returning(urlColumns);
+        if (!deletedUrl) throw new ApiError(9002);
 
-      const deletedUrl = await prisma.url.delete({
-        where: {
-          id: id,
-        },
-        omit: {
-          password: true,
-        },
-      });
+        logger.info(`${req.user.username} deleted URL ${deletedUrl.id}`, {
+          dest: deletedUrl.destination,
+        });
 
-      logger.info(`${req.user.username} deleted URL ${deletedUrl.id}`, {
-        dest: deletedUrl.destination,
-      });
-
-      return res.send(deletedUrl);
-    });
-
-    done();
+        return res.send(deletedUrl);
+      },
+    );
   },
   { name: PATH },
 );

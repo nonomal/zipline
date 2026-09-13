@@ -1,22 +1,30 @@
+import { verifyAccessToken } from '@/lib/accessToken';
+import { setContentSecurity } from '@/lib/api/contentSecurity';
+import { ApiError } from '@/lib/api/errors';
 import { parseRange } from '@/lib/api/range';
 import { config } from '@/lib/config';
-import { verifyPassword } from '@/lib/crypto';
 import { datasource } from '@/lib/datasource';
-import { prisma } from '@/lib/db';
+import { db } from '@/lib/db';
+import { removeFile } from '@/lib/db/models/file';
+import { files } from '@/lib/db/schema';
+import { escapeLike } from '@/lib/db/utils';
+import { sanitizeFilename } from '@/lib/fs';
 import { log } from '@/lib/logger';
 import { guess } from '@/lib/mimes';
+import { TimedCache } from '@/lib/timedCache';
+import typedPlugin from '@/server/typedPlugin';
+import { desc, eq, like, sql } from 'drizzle-orm';
 import { FastifyReply, FastifyRequest } from 'fastify';
-import fastifyPlugin from 'fastify-plugin';
 
-const viewsCache = new Map<string, number>();
 const VIEW_WINDOW = 5 * 1000;
+const viewsCache = new TimedCache<string, number>(VIEW_WINDOW);
 
 type Params = {
   id: string;
 };
 
 type Querystring = {
-  pw?: string;
+  token?: string;
   download?: string;
 };
 
@@ -30,13 +38,16 @@ export const rawFileHandler = async (
   res: FastifyReply,
 ) => {
   const { id } = req.params;
-  const { pw, download } = req.query;
+  const { token, download } = req.query;
+
+  setContentSecurity(res);
+
+  const idSanitized = sanitizeFilename(id);
+  if (!idSanitized) return res.callNotFound();
 
   if (id.startsWith('.thumbnail')) {
-    const thumbnail = await prisma.thumbnail.findFirst({
-      where: {
-        path: id,
-      },
+    const thumbnail = await db.query.thumbnails.findFirst({
+      where: { path: idSanitized, file: { password: { isNull: true } } },
     });
 
     if (!thumbnail) return res.callNotFound();
@@ -56,21 +67,23 @@ export const rawFileHandler = async (
       .send(buf);
   }
 
-  const file = await prisma.file.findFirst({
-    where: {
-      name: decodeURIComponent(id),
-    },
-  });
+  const [fileReq] = await db.select().from(files).where(eq(files.name, idSanitized)).limit(1);
+  let file = fileReq;
+  if (!file && config.files.extensionlessUrls && !idSanitized.includes('.')) {
+    const [fileReq] = await db
+      .select()
+      .from(files)
+      .where(like(files.name, `${escapeLike(idSanitized)}.%`))
+      .orderBy(desc(files.createdAt))
+      .limit(1);
+    file = fileReq;
+  }
   if (!file) return res.callNotFound();
 
   if (file?.deletesAt && file.deletesAt <= new Date()) {
     try {
       await datasource.delete(file.name);
-      await prisma.file.delete({
-        where: {
-          id: file.id,
-        },
-      });
+      await removeFile(file.id);
     } catch (e) {
       logger.error('failed to delete file on expiration', { id: file.id }).error(e as Error);
     }
@@ -78,10 +91,8 @@ export const rawFileHandler = async (
   }
 
   if (file?.password) {
-    if (!pw) return res.forbidden('Password protected.');
-    const verified = await verifyPassword(pw, file.password!);
-
-    if (!verified) return res.forbidden('Incorrect password.');
+    const valid = verifyAccessToken(token, 'file', file.id);
+    if (!valid) throw new ApiError(3018);
   }
 
   const size = file?.size || (await datasource.size(file?.name ?? id));
@@ -100,9 +111,7 @@ export const rawFileHandler = async (
     if (config.features.deleteOnMaxViews) {
       try {
         await datasource.delete(file.name);
-        await prisma.file.delete({
-          where: { id: file.id },
-        });
+        await removeFile(file.id);
       } catch (e) {
         logger.error('failed to delete file on max views', { id: file.id }).error(e as Error);
       }
@@ -115,14 +124,17 @@ export const rawFileHandler = async (
     viewsCache.set(key, now);
 
     try {
-      await prisma.file.update({
-        where: { id: file.id },
-        data: { views: { increment: 1 } },
-      });
+      await db
+        .update(files)
+        .set({ views: sql`${files.views} + 1` })
+        .where(eq(files.id, file.id));
     } catch (e) {
       logger.error('failed to increment view counter', { id: file.id }).error(e as Error);
     }
   };
+
+  const fileType = file?.type || 'application/octet-stream';
+  const contentType = fileType.startsWith('text/') ? `${fileType}; charset=utf-8` : fileType;
 
   if (req.headers.range) {
     const [start, end] = parseRange(req.headers.range, size);
@@ -133,12 +145,12 @@ export const rawFileHandler = async (
       await countView();
 
       return res
-        .type(file?.type || 'application/octet-stream')
+        .type(contentType)
         .headers({
           'Content-Length': size,
           ...(file?.originalName
             ? {
-                'Content-Disposition': `${download ? 'attachment; ' : ''}filename="${encodeURIComponent(file.originalName)}"`,
+                'Content-Disposition': `${download ? 'attachment; ' : ''}filename*=utf-8''${encodeURIComponent(file.originalName)}`,
               }
             : download && { 'Content-Disposition': 'attachment;' }),
         })
@@ -152,14 +164,14 @@ export const rawFileHandler = async (
     await countView();
 
     return res
-      .type(file?.type || 'application/octet-stream')
+      .type(contentType)
       .headers({
         'Content-Range': `bytes ${start}-${end}/${size}`,
         'Accept-Ranges': 'bytes',
         'Content-Length': end - start + 1,
         ...(file?.originalName
           ? {
-              'Content-Disposition': `${download ? 'attachment; ' : ''}filename="${encodeURIComponent(file.originalName)}"`,
+              'Content-Disposition': `${download ? 'attachment; ' : ''}filename*=utf-8''${encodeURIComponent(file.originalName)}`,
             }
           : download && { 'Content-Disposition': 'attachment;' }),
       })
@@ -173,13 +185,13 @@ export const rawFileHandler = async (
   await countView();
 
   return res
-    .type(file?.type || 'application/octet-stream')
+    .type(contentType)
     .headers({
       'Content-Length': size,
       'Accept-Ranges': 'bytes',
       ...(file?.originalName
         ? {
-            'Content-Disposition': `${download ? 'attachment; ' : ''}filename="${encodeURIComponent(file.originalName)}"`,
+            'Content-Disposition': `${download ? 'attachment; ' : ''}filename*=utf-8''${encodeURIComponent(file.originalName)}`,
           }
         : download && { 'Content-Disposition': 'attachment;' }),
     })
@@ -188,11 +200,9 @@ export const rawFileHandler = async (
 };
 
 export const PATH = '/raw/:id';
-export default fastifyPlugin(
-  (server, _, done) => {
+export default typedPlugin(
+  async (server) => {
     server.get(PATH, rawFileHandler);
-
-    done();
   },
   { name: PATH },
 );

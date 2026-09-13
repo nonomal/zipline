@@ -1,6 +1,7 @@
+import type { User } from '@/lib/db/models/user';
 import { Response } from '@/lib/api/response';
 import { fetchApi } from '@/lib/fetchApi';
-import { useUserStore } from '@/lib/store/user';
+import { useUserStore } from '@/lib/client/store/user';
 import {
   Anchor,
   Button,
@@ -39,26 +40,45 @@ const alignIcons: Record<string, React.ReactNode> = {
 export default function SettingsFileView() {
   const [user, setUser] = useUserStore(useShallow((state) => [state.user, state.setUser]));
 
+  if (!user) {
+    return (
+      <Paper withBorder p='sm'>
+        <Title order={2}>Viewing Files</Title>
+        <Text c='dimmed' mt='xs'>
+          Loading…
+        </Text>
+      </Paper>
+    );
+  }
+
+  return <Form user={user} setUser={setUser} />;
+}
+
+function Form({ user, setUser }: { user: User; setUser: (u: User) => void }) {
   const form = useForm({
     initialValues: {
-      enabled: user?.view.enabled ?? false,
-      content: user?.view.content ?? '',
-      embed: user?.view.embed ?? false,
-      embedTitle: user?.view.embedTitle ?? '',
-      embedDescription: user?.view.embedDescription ?? '',
-      embedSiteName: user?.view.embedSiteName ?? '',
-      embedColor: user?.view.embedColor ?? '',
-      align: user?.view.align ?? 'left',
-      showMimetype: user?.view.showMimetype ?? false,
-      showTags: user?.view.showTags ?? false,
-      showFolder: user?.view.showFolder ?? false,
+      enabled: user.view.enabled || false,
+      disableTextFiles: user.view.disableTextFiles || false,
+      content: user.view.content || '',
+      embed: user.view.embed || false,
+      embedMediaOnly: user.view.embedMediaOnly || false,
+      embedTitle: user.view.embedTitle || '',
+      embedDescription: user.view.embedDescription || '',
+      embedSiteName: user.view.embedSiteName || '',
+      embedColor: user.view.embedColor || '',
+      align: user.view.align || 'left',
+      showMimetype: user.view.showMimetype || false,
+      showTags: user.view.showTags || false,
+      showFolder: user.view.showFolder || false,
     },
   });
 
   const onSubmit = async (values: typeof form.values) => {
-    const valuesTrimmed = {
+    const view = {
       enabled: values.enabled,
+      disableTextFiles: values.disableTextFiles,
       embed: values.embed,
+      embedMediaOnly: values.embed ? false : values.embedMediaOnly,
       content: values.content.trim() || null,
       embedTitle: values.embedTitle.trim() || null,
       embedDescription: values.embedDescription.trim() || null,
@@ -71,7 +91,7 @@ export default function SettingsFileView() {
     };
 
     const { data, error } = await fetchApi<Response['/api/user']>('/api/user', 'PATCH', {
-      view: valuesTrimmed,
+      view,
     });
 
     if (!data && error) {
@@ -106,6 +126,12 @@ export default function SettingsFileView() {
       <Stack gap='sm' mt='xs'>
         <form onSubmit={form.onSubmit(onSubmit)}>
           <SimpleGrid cols={{ base: 1, md: 2 }} spacing='sm' mb='xs'>
+            <Switch
+              label='Disable text files'
+              description='Disable viewing text files through view-routes. This has no effect on other file types and will work even if view-routes are disabled.'
+              {...form.getInputProps('disableTextFiles', { type: 'checkbox' })}
+            />
+
             <Switch
               label='Enable View Routes'
               description='Enable viewing files through customizable view-routes'
@@ -170,6 +196,20 @@ export default function SettingsFileView() {
             disabled={!form.values.enabled}
             my='xs'
             {...form.getInputProps('embed', { type: 'checkbox' })}
+            onChange={(event) => {
+              form.getInputProps('embed', { type: 'checkbox' }).onChange(event);
+              if (event.currentTarget.checked) {
+                form.setFieldValue('embedMediaOnly', false);
+              }
+            }}
+          />
+
+          <Switch
+            label='Media-only link preview'
+            description='When embeds are off, still add OpenGraph image/video tags so Discord and similar apps unfurl the media only (no custom title, description, or site name). The URL you paste stays in the message as plain text.'
+            disabled={!form.values.enabled || form.values.embed}
+            my='xs'
+            {...form.getInputProps('embedMediaOnly', { type: 'checkbox' })}
           />
 
           <SimpleGrid cols={{ base: 1, md: 2 }} spacing='sm'>

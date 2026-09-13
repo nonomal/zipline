@@ -1,72 +1,101 @@
+import { ApiError } from '@/lib/api/errors';
 import { createToken, hashPassword } from '@/lib/crypto';
-import { prisma } from '@/lib/db';
-import { User, userSelect } from '@/lib/db/models/user';
-import { getZipline } from '@/lib/db/models/zipline';
+import { db } from '@/lib/db';
+import { createUser, type User, userSchema } from '@/lib/db/models/user';
+import { ensureSettingsRow } from '@/lib/db/models/zipline';
+import { zipline } from '@/lib/db/schema';
 import { log } from '@/lib/logger';
 import { secondlyRatelimit } from '@/lib/ratelimits';
-import fastifyPlugin from 'fastify-plugin';
+import { zStringTrimmed } from '@/lib/validation';
+import typedPlugin from '@/server/typedPlugin';
+import { eq } from 'drizzle-orm';
+import z from 'zod';
 
 export type ApiSetupResponse = {
   firstSetup?: boolean;
   user?: User;
 };
 
-type Body = {
-  username: string;
-  password: string;
-};
-
 const logger = log('api').c('setup');
 
 export const PATH = '/api/setup';
-export default fastifyPlugin(
-  (server, _, done) => {
-    server.get(PATH, async (_, res) => {
-      const { firstSetup } = await getZipline();
-      if (!firstSetup) return res.forbidden();
-
-      return res.send({ firstSetup });
-    });
-
-    server.post<{ Body: Body }>(PATH, secondlyRatelimit(5), async (req, res) => {
-      const { firstSetup, id } = await getZipline();
-
-      if (!firstSetup) return res.forbidden();
-
-      logger.info('first setup running');
-
-      const { username, password } = req.body;
-      if (!username) return res.badRequest('Username is required');
-      if (!password) return res.badRequest('Password is required');
-
-      const user = await prisma.user.create({
-        data: {
-          username,
-          password: await hashPassword(password),
-          role: 'SUPERADMIN',
-          token: createToken(),
+export default typedPlugin(
+  async (server) => {
+    server.get(
+      PATH,
+      {
+        schema: {
+          description: 'Return whether Zipline is in first-time setup mode, used by the initial setup flow.',
+          response: {
+            200: z.object({
+              firstSetup: z.boolean(),
+            }),
+          },
         },
-        select: userSelect,
-      });
+      },
+      async (_, res) => {
+        const { firstSetup } = await ensureSettingsRow();
+        if (!firstSetup) throw new ApiError(9001);
 
-      logger.info('first setup complete');
+        return res.send({ firstSetup });
+      },
+    );
 
-      await prisma.zipline.update({
-        where: {
-          id,
+    server.post(
+      PATH,
+      {
+        schema: {
+          description: 'Perform the first-time setup by creating the initial SUPERADMIN user.',
+          body: z.object({
+            username: zStringTrimmed,
+            password: zStringTrimmed,
+          }),
+          response: {
+            200: z.object({
+              firstSetup: z.boolean(),
+              user: userSchema,
+            }),
+          },
         },
-        data: {
+        ...secondlyRatelimit(5),
+      },
+      async (req, res) => {
+        await ensureSettingsRow();
+
+        const { username, password } = req.body;
+
+        const hashed = await hashPassword(password);
+        const token = createToken();
+
+        logger.info('first setup running');
+
+        const user = await db.transaction(async (tx) => {
+          const [claimed] = await tx
+            .update(zipline)
+            .set({ firstSetup: false })
+            .where(eq(zipline.firstSetup, true))
+            .returning({ id: zipline.id });
+          if (!claimed) throw new ApiError(9001);
+
+          return createUser(
+            {
+              username,
+              password: hashed,
+              role: 'SUPERADMIN',
+              token,
+            },
+            tx,
+          );
+        });
+
+        logger.info('first setup complete');
+
+        return res.send({
           firstSetup: false,
-        },
-      });
-
-      return res.send({
-        firstSetup,
-        user,
-      });
-    });
-
-    done();
+          user,
+        });
+      },
+    );
   },
   { name: PATH },
 );

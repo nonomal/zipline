@@ -1,15 +1,21 @@
+import { ApiError } from '@/lib/api/errors';
 import { bytes } from '@/lib/bytes';
 import { checkOutput, COMPRESS_TYPES } from '@/lib/compress';
 import { reloadSettings } from '@/lib/config';
 import type { readDatabaseSettings } from '@/lib/config/read/db';
 import { safeConfig } from '@/lib/config/safe';
-import { prisma } from '@/lib/db';
+import { MAX_SAFE_TIMEOUT_MS, MIME_REGEX } from '@/lib/config/validate';
+import { db } from '@/lib/db';
+import { getSettings, updateSettings } from '@/lib/db/models/zipline';
+import { zipline } from '@/lib/db/schema';
 import { log } from '@/lib/logger';
 import { secondlyRatelimit } from '@/lib/ratelimits';
+import { RESERVED_ROUTES } from '@/lib/reservedRoutes';
 import { readThemes } from '@/lib/theme/file';
+import { zStringTrimmed } from '@/lib/validation';
 import { administratorMiddleware } from '@/server/middleware/administrator';
 import { userMiddleware } from '@/server/middleware/user';
-import fastifyPlugin from 'fastify-plugin';
+import typedPlugin from '@/server/typedPlugin';
 import { statSync } from 'fs';
 import ms, { StringValue } from 'ms';
 import { cpus } from 'os';
@@ -23,22 +29,28 @@ export type ApiServerSettingsWebResponse = {
   config: ReturnType<typeof safeConfig>;
   codeMap: { ext: string; mime: string; name: string }[];
 };
-type Body = Partial<Settings>;
+const jsonTransform = (value: any, ctx: z.RefinementCtx) => {
+  if (typeof value !== 'string') return value;
+  try {
+    return JSON.parse(value);
+  } catch {
+    ctx.addIssue({ code: 'custom', message: 'Invalid JSON' });
+    return z.NEVER;
+  }
+};
 
-export const reservedRoutes = [
-  '/dashboard',
-  '/auth',
-  '/api',
-  '/raw',
-  '/invite',
-  '/view',
-  '/robots.txt',
-  '/manifest.json',
-  '/favicon.ico',
-];
+const zMs = zStringTrimmed.refine(
+  (value) => ms((value ?? '0') as StringValue) > 0,
+  'Value must be greater than 0',
+);
+const zBytes = zStringTrimmed.refine((value) => bytes(value) > 0, 'Value must be greater than 0');
 
-const zMs = z.string().refine((value) => ms(value as StringValue) > 0, 'Value must be greater than 0');
-const zBytes = z.string().refine((value) => bytes(value) > 0, 'Value must be greater than 0');
+const zIntervalMs = zStringTrimmed
+  .refine((value) => ms((value ?? '0') as StringValue) >= 0, 'Value must be greater than or equal to 0')
+  .refine(
+    (value) => ms(value as StringValue) <= MAX_SAFE_TIMEOUT_MS,
+    `Value must be less than or equal to ${MAX_SAFE_TIMEOUT_MS}ms`,
+  );
 
 const discordEmbed = z
   .union([
@@ -61,7 +73,7 @@ const discordEmbed = z
     z.string(),
   ])
   .nullable()
-  .transform((value) => (typeof value === 'string' ? JSON.parse(value) : value))
+  .transform(jsonTransform)
   .transform((value) =>
     typeof value === 'object' ? (Object.keys(value || {}).length ? value : null) : value,
   );
@@ -69,40 +81,57 @@ const discordEmbed = z
 const logger = log('api').c('server').c('settings');
 
 export const PATH = '/api/server/settings';
-export default fastifyPlugin(
-  (server, _, done) => {
-    server.get<{ Body: Body }>(
+export default typedPlugin(
+  async (server) => {
+    server.get(
       PATH,
       {
+        schema: {
+          description:
+            'Fetch the full Zipline server settings row along with a list of configuration keys that were overridden at runtime.',
+          response: {
+            200: z.object({
+              settings: z.custom<Settings>(),
+              tampered: z.array(z.string()),
+            }),
+          },
+          tags: ['auth', 'superadmin'],
+        },
         preHandler: [userMiddleware, administratorMiddleware],
       },
-      async (_, res) => {
-        const settings = await prisma.zipline.findFirst({
-          omit: {
-            createdAt: true,
-            updatedAt: true,
-            id: true,
-            firstSetup: true,
-          },
-        });
+      async (req, res) => {
+        if (req.user.role !== 'SUPERADMIN') throw new ApiError(3015);
 
-        if (!settings) return res.notFound('no settings table found');
+        const settings = await getSettings();
+
+        if (!settings) throw new ApiError(4010);
 
         return res.send({ settings, tampered: global.__tamperedConfig__ || [] });
       },
     );
 
-    server.patch<{ Body: Body }>(
+    server.patch(
       PATH,
       {
+        schema: {
+          description: 'Partially update Zipline server settings.',
+          body: z.custom<Partial<Settings>>(),
+          response: {
+            200: z.custom<ApiServerSettingsResponse>(),
+          },
+          tags: ['auth', 'superadmin'],
+        },
         preHandler: [userMiddleware, administratorMiddleware],
         ...secondlyRatelimit(1),
       },
       async (req, res) => {
-        const settings = await prisma.zipline.findFirst();
-        if (!settings) return res.notFound('no settings table found');
+        if (req.user.role !== 'SUPERADMIN') throw new ApiError(3015);
 
-        const themes = (await readThemes()).map((x) => x.id);
+        const [settings] = await db.select({ id: zipline.id }).from(zipline).limit(1);
+        if (!settings) throw new ApiError(4010);
+
+        const availableThemes = await readThemes();
+        const themes = availableThemes.map((theme) => theme.id);
 
         const settingsBodySchema = z
           .object({
@@ -124,20 +153,23 @@ export default fastifyPlugin(
             chunksMax: zBytes,
             chunksSize: zBytes,
 
-            tasksDeleteInterval: zMs,
-            tasksClearInvitesInterval: zMs,
-            tasksMaxViewsInterval: zMs,
-            tasksThumbnailsInterval: zMs,
-            tasksMetricsInterval: zMs,
+            tasksDeleteInterval: zIntervalMs,
+            tasksClearInvitesInterval: zIntervalMs,
+            tasksMaxViewsInterval: zIntervalMs,
+            tasksThumbnailsInterval: zIntervalMs,
+            tasksMetricsInterval: zIntervalMs,
+            tasksCleanThumbnailsInterval: zIntervalMs,
 
             filesRoute: z
               .string()
               .startsWith('/')
               .refine(
-                (value) => !reservedRoutes.some((route) => value.startsWith(route)),
+                (value) => !RESERVED_ROUTES.some((route) => value.startsWith(route)),
                 'Provided route is reserved',
               ),
             filesLength: z.number().min(1).max(64),
+            filesDisabledTypes: z.array(z.string().regex(MIME_REGEX, 'Invalid MIME type')),
+            filesDisabledTypesDefault: z.string().regex(MIME_REGEX, 'Invalid MIME type').nullable(),
             filesDefaultFormat: z.enum(['random', 'date', 'uuid', 'name', 'gfycat']),
             filesDisabledExtensions: z
               .union([
@@ -148,7 +180,6 @@ export default fastifyPlugin(
                 typeof value === 'string' ? value.split(',').map((ext) => ext.trim()) : value,
               ),
             filesMaxFileSize: zBytes,
-
             filesDefaultExpiration: zMs.nullable(),
             filesMaxExpiration: zMs.nullable(),
             filesAssumeMimetypes: z.boolean(),
@@ -159,12 +190,14 @@ export default fastifyPlugin(
             filesDefaultCompressionFormat: z
               .enum(COMPRESS_TYPES)
               .refine((v) => checkOutput(v), 'System does not support outputting this image format.'),
+            filesMaxFilesPerUpload: z.number().min(1).max(2147483647),
+            filesExtensionlessUrls: z.boolean(),
 
             urlsRoute: z
               .string()
               .startsWith('/')
               .refine(
-                (value) => !reservedRoutes.some((route) => value.startsWith(route)),
+                (value) => !RESERVED_ROUTES.some((route) => value.startsWith(route)),
                 'Provided route is reserved',
               ),
             urlsLength: z.number().min(1).max(64),
@@ -185,13 +218,13 @@ export default fastifyPlugin(
                 'Number of threads must be less than or equal to the number of CPUs: ' + cpus().length,
               ),
             featuresThumbnailsFormat: z.enum(['jpg', 'png', 'webp']),
+            featuresThumbnailsInstantaneous: z.boolean(),
 
             featuresMetricsEnabled: z.boolean(),
             featuresMetricsAdminOnly: z.boolean(),
             featuresMetricsShowUserSpecific: z.boolean(),
 
             featuresVersionChecking: z.boolean(),
-            featuresVersionAPI: z.url(),
 
             invitesEnabled: z.boolean(),
             invitesLength: z.number().min(1).max(64),
@@ -208,7 +241,7 @@ export default fastifyPlugin(
                 ),
                 z.string(),
               ])
-              .transform((value) => (typeof value === 'string' ? JSON.parse(value) : value)),
+              .transform(jsonTransform),
             websiteLoginBackground: z.url().nullable(),
             websiteLoginBackgroundBlur: z.boolean(),
             websiteDefaultAvatar: z
@@ -282,7 +315,26 @@ export default fastifyPlugin(
 
             mfaTotpEnabled: z.boolean(),
             mfaTotpIssuer: z.string(),
-            mfaPasskeys: z.boolean(),
+
+            mfaPasskeysEnabled: z.boolean(),
+            mfaPasskeysRpID: z
+              .string()
+              .trim()
+              .refine(
+                (v) => v.length === 0 || /^[a-zA-Z0-9.-]+$/.test(v),
+                'RP ID can only contain letters, numbers, dots, and hyphens. Example: example.com, localhost, zipline.example.com.',
+              )
+              .transform((v) => (v.length === 0 ? null : v))
+              .nullable(),
+            mfaPasskeysOrigin: z
+              .string()
+              .trim()
+              .refine(
+                (v) => v.length === 0 || /^https?:\/\/[a-zA-Z0-9.-]+(:\d+)?(\/.*)?$/.test(v),
+                'Origin must be a valid URL starting with http:// or https://',
+              )
+              .transform((v) => (v.length === 0 ? null : v))
+              .nullable(),
 
             ratelimitEnabled: z.boolean(),
             ratelimitMax: z.number().refine((value) => value > 0, 'Value must be greater than 0'),
@@ -323,7 +375,7 @@ export default fastifyPlugin(
                 z
                   .string()
                   .regex(
-                    /^[a-zA-Z0-9][a-zA-Z0-9-_]{0,61}[a-zA-Z0-9]{0,1}\.([a-zA-Z]{1,6}|[a-zA-Z0-9-]{1,30}\.[a-zA-Z]{2,30})$/gi,
+                    /^(?:[a-zA-Z0-9_](?:[a-zA-Z0-9_-]{0,61}[a-zA-Z0-9_])?\.)+[a-zA-Z]{2,63}$/i,
                     'Invalid Domain',
                   ),
               ),
@@ -399,6 +451,25 @@ export default fastifyPlugin(
               });
             }
           })
+          .superRefine((data, ctx) => {
+            if (data.mfaPasskeysEnabled) {
+              if (!data.mfaPasskeysRpID || data.mfaPasskeysRpID.length === 0) {
+                ctx.addIssue({
+                  path: ['mfaPasskeysRpID'],
+                  message: 'RP ID is required when passkeys are enabled',
+                  code: 'custom',
+                });
+              }
+
+              if (!data.mfaPasskeysOrigin || data.mfaPasskeysOrigin.length === 0) {
+                ctx.addIssue({
+                  path: ['mfaPasskeysOrigin'],
+                  message: 'Origin is required when passkeys are enabled',
+                  code: 'custom',
+                });
+              }
+            }
+          })
           .refine((data) => Object.keys(data).length > 0, {
             message: 'No settings provided to update',
           });
@@ -409,27 +480,11 @@ export default fastifyPlugin(
             issues: result.error.issues,
           });
 
-          return res.status(400).send({
-            statusCode: 400,
-            issues: result.error.issues,
-          });
+          throw new ApiError(1022).add('issues', result.error.issues);
         }
 
-        const newSettings = await prisma.zipline.update({
-          where: {
-            id: settings.id,
-          },
-          // @ts-ignore
-          data: {
-            ...result.data,
-          },
-          omit: {
-            createdAt: true,
-            updatedAt: true,
-            id: true,
-            firstSetup: true,
-          },
-        });
+        const newSettings = await updateSettings(settings.id, result.data);
+        if (!newSettings) throw new ApiError(4010);
 
         await reloadSettings();
 
@@ -441,8 +496,6 @@ export default fastifyPlugin(
         return res.send({ settings: newSettings, tampered: global.__tamperedConfig__ || [] });
       },
     );
-
-    done();
   },
   { name: PATH },
 );
